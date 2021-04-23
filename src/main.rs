@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 // Points per second.
 const RATE: f64 = 44_100.;
 
@@ -33,6 +35,7 @@ struct WaveTableOsc {
     modulation: i8,
     phase_offset: i8,
     out_cv: i8,
+    dummy: i8,
 }
 
 impl WaveTableOsc {
@@ -59,6 +62,28 @@ impl WaveTableOsc {
         let i = (self.counter as i32).wrapping_add(m as i32) as u16 % wt_len;
 
         self.out_cv = self.wt[i as usize >> 6];
+    }
+}
+
+impl Index<&str> for WaveTableOsc {
+    type Output = i8;
+
+    fn index(&self, i: &str) -> &Self::Output {
+        match i {
+            "out" => &self.out_cv,
+            _ => &0,
+        }
+    }
+}
+
+impl IndexMut<&str> for WaveTableOsc {
+    fn index_mut(&mut self, i: &str) -> &mut Self::Output {
+        match i {
+            "modulation" => &mut self.modulation,
+            "modulation_idx" => &mut self.modulation_idx,
+            // This should probably error.
+            _ => &mut self.dummy,
+        }
     }
 }
 
@@ -124,81 +149,60 @@ fn main() {
             sq_wt[i] = i8::min_value();
         }
 
-        let mut wto = WaveTableOsc {
-            counter: 0,
-            wt: sin_wt.clone(),
-            freq_ipc: ipc_64_map[69],
-            modulation_idx: 0,
-            modulation: 0,
-            phase_offset: 0,
-            out_cv: 0,
-        };
-        let mut wto2 = WaveTableOsc {
-            counter: 0,
-            wt: sin_wt.clone(),
-            freq_ipc: ipc_64_map[69],
-            modulation_idx: 0,
-            modulation: 0,
-            phase_offset: 0,
-            out_cv: 0,
-        };
+        let names = vec!["wto", "wto2"];
+        let mut components = vec![
+            WaveTableOsc {
+                counter: 0,
+                wt: sin_wt.clone(),
+                freq_ipc: ipc_64_map[69],
+                modulation_idx: 0,
+                modulation: 0,
+                phase_offset: 0,
+                out_cv: 0,
+                dummy: 0,
+            },
+            WaveTableOsc {
+                counter: 0,
+                wt: sin_wt.clone(),
+                freq_ipc: ipc_64_map[69],
+                modulation_idx: 0,
+                modulation: 0,
+                phase_offset: 0,
+                out_cv: 0,
+                dummy: 0,
+            },
+        ];
 
         // Connect the modulation input of the first oscillator to the
         // output of the second.
-        let wires = vec![|| wto.modulation = wto2.out_cv];
+        let wires = vec![(("wto2", "out"), ("wto", "modulation"))];
 
         for _ in 0..1 {
             // Increment all the components.
-            wto.step();
-            wto2.step();
+            // into_iter() causes components to be moved.
+            for component in components.iter() {
+                /*
+                 *  error[E0596]: cannot borrow `*component` as mutable, as it is behind a `&` reference
+                 *    --> src/main.rs:183:17
+                 *     |
+                 * 182 |             for component in components.iter() {
+                 *     |                              ----------------- this iterator yields `&` references
+                 * 183 |                 component.step();
+                 *     |                 ^^^^^^^^^ `component` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+                 *
+                 */
+                component.step();
+            }
             // Update all inputs and outputs as defined by the wires.
-            wires.into_iter().for_each(|mut x| x());
+            // wires.into_iter().for_each(|mut x| x());
+            for (src, dst) in wires.iter() {
+                // Need to actually check this and report errors....
+                if let Some(i) = names.iter().position(|&x| x == src.0) {
+                    if let Some(j) = names.iter().position(|&x| x == dst.0) {
+                        components[j][dst.1] = components[i][src.1];
+                    }
+                }
+            }
         }
-
-        /*
-         * The above errors with
-         *
-         *  error[E0499]: cannot borrow `wto` as mutable more than once at a time
-         *    --> src/main.rs:152:13
-         *     |
-         * 148 |         let wires = vec![|| wto.modulation = wto2.out_cv];
-         *     |                          -- --- first borrow occurs due to use of `wto` in closure
-         *     |                          |
-         *     |                          first mutable borrow occurs here
-         * ...
-         * 152 |             wto.step();
-         *     |             ^^^ second mutable borrow occurs here
-         * ...
-         * 155 |             wires.into_iter().for_each(|mut x| x());
-         *     |             ----- first borrow later used here
-         *
-         * error[E0502]: cannot borrow `wto2` as mutable because it is also borrowed as immutable
-         *    --> src/main.rs:153:13
-         *     |
-         * 148 |         let wires = vec![|| wto.modulation = wto2.out_cv];
-         *     |                          --                  ---- first borrow occurs due to use of `wto2` in closure
-         *     |                          |
-         *     |                          immutable borrow occurs here
-         * ...
-         * 153 |             wto2.step();
-         *     |             ^^^^^^^^^^^ mutable borrow occurs here
-         * 154 |             // Update all inputs and outputs as defined by the wires.
-         * 155 |             wires.into_iter().for_each(|mut x| x());
-         *     |             ----- immutable borrow later used here
-         *
-         * error[E0382]: use of moved value: `wires`
-         *    --> src/main.rs:155:13
-         *     |
-         * 148 |         let wires = vec![|| wto.modulation = wto2.out_cv];
-         *     |             ----- move occurs because `wires` has type `Vec<[closure@src/main.rs:148:26: 148:57]>`, which does not implement the `Copy` trait
-         * ...
-         * 155 |             wires.into_iter().for_each(|mut x| x());
-         *     |             ^^^^^ ----------- `wires` moved due to this method call, in previous iteration of loop
-         * 156 |         }
-         * 157 |     }
-         *     |     - value moved here, in previous iteration of loop
-         *     |
-         * note: this function takes ownership of the receiver `self`, which moves `wires`
-         */
     }
 }
