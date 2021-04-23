@@ -179,22 +179,10 @@ fn main() {
 
         for _ in 0..1 {
             // Increment all the components.
-            // into_iter() causes components to be moved.
-            for component in components.iter() {
-                /*
-                 *  error[E0596]: cannot borrow `*component` as mutable, as it is behind a `&` reference
-                 *    --> src/main.rs:183:17
-                 *     |
-                 * 182 |             for component in components.iter() {
-                 *     |                              ----------------- this iterator yields `&` references
-                 * 183 |                 component.step();
-                 *     |                 ^^^^^^^^^ `component` is a `&` reference, so the data it refers to cannot be borrowed as mutable
-                 *
-                 */
+            for component in components.iter_mut() {
                 component.step();
             }
             // Update all inputs and outputs as defined by the wires.
-            // wires.into_iter().for_each(|mut x| x());
             for (src, dst) in wires.iter() {
                 // Need to actually check this and report errors....
                 if let Some(i) = names.iter().position(|&x| x == src.0) {
