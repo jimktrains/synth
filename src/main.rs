@@ -4,6 +4,7 @@ use std::path::Path;
 use wav;
 
 mod amp;
+mod env;
 mod osc;
 mod util;
 
@@ -54,19 +55,28 @@ fn main() -> Result<(), Error> {
         (ipc_64_e_map.iter().map(|x| x.abs()).sum::<i16>() as f64) / (ipc_64_e_map.len() as f64)
     );
 
-    let names = vec!["wto1", "wto2", "vca1"];
+    let names = vec!["wto1", "wto2", "vca1", "adsr1"];
     let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map[69]);
     wto1.modulation_idx = 32;
+
     let mut wto2 = osc::FuncOsc::triangle(ipc_64_map[1]);
     let mut vca1 = amp::Vca::new(i8::max_value());
 
-    let mut components: Vec<&mut dyn util::Component> = vec![&mut wto1, &mut wto2, &mut vca1];
+    let mut adsr1 = env::Adsr::new();
+    adsr1["attack_for"] = 100;
+    adsr1["attack_to"] = i8::max_value();
+    adsr1["decay_for"] = 100;
+    adsr1["sustain_at"] = i8::max_value() / 2;
+    adsr1["release_for"] = 100;
+
+    let mut components: Vec<&mut dyn util::Component> =
+        vec![&mut wto1, &mut wto2, &mut vca1, &mut adsr1];
 
     // Connect the modulation input of the first oscillator to the
     // output of the second.
     let wires = vec![
         (("wto2", "out"), ("wto1", "modulation")),
-        (("wto2", "out"), ("vca1", "amp_cv")),
+        (("adsr1", "out"), ("vca1", "amp_cv")),
         (("wto1", "out"), ("vca1", "in_cv")),
     ];
 
@@ -83,7 +93,25 @@ fn main() -> Result<(), Error> {
     }
 
     let mut data: Vec<u8> = vec![];
+    let mut counter = 0;
+    let mut counter2 = 0;
     for _ in 0..util::RATE {
+        if counter % 44100 == 0 {
+            counter2 += 1;
+            components[3]["trigger"] = i8::max_value();
+            components[3]["gate"] = i8::max_value();
+            println!("trigger + gate");
+        } else if counter2 != 0 {
+            components[3]["trigger"] = 0;
+            if counter2 == 44100 / 2 {
+                counter2 = 0;
+                components[3]["gate"] = 0;
+                println!("gate off");
+            } else {
+                counter2 += 1;
+            }
+        }
+        counter += 1;
         // Increment all the components.
         for component in components.iter_mut() {
             component.step();
