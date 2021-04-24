@@ -56,11 +56,13 @@ fn main() -> Result<(), Error> {
         (ipc_64_e_map.iter().map(|x| x.abs()).sum::<i16>() as f64) / (ipc_64_e_map.len() as f64)
     );
 
-    let names = vec!["wto1", "wto2", "vca1", "adsr1", "seq1"];
-    let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map[69]);
+    let names = vec![
+        "wto1", "wto2", "vca1", "adsr1", "seq1", "vca1o", "adsr1o", "seq1o",
+    ];
+    let mut wto1 = osc::WaveTableOsc::saw(ipc_64_map[69]);
     wto1.modulation_idx = 32;
 
-    let mut wto2 = osc::FuncOsc::triangle(ipc_64_map[1]);
+    let mut wto2 = osc::FuncOsc::triangle(ipc_64_map[33]);
     let mut vca1 = amp::Vca::new(i8::max_value());
 
     let mut adsr1 = env::Adsr::new();
@@ -72,11 +74,38 @@ fn main() -> Result<(), Error> {
 
     let mut seq1 = seq::BasicSeq::new();
     seq1.beats[0] = true;
-    seq1.beats[3] = true;
+    seq1.beats[4] = true;
+    seq1.beats[12] = true;
     seq1["tempo"] = 120;
 
-    let mut components: Vec<&mut dyn util::Component> =
-        vec![&mut wto1, &mut wto2, &mut vca1, &mut adsr1, &mut seq1];
+    let mut vca1o = amp::Vca::new(i8::max_value());
+
+    let mut adsr1o = env::Adsr::new();
+    adsr1o["attack_for"] = 15;
+    adsr1o["attack_to"] = i8::max_value() / 4 * 3;
+    adsr1o["decay_for"] = 15;
+    adsr1o["sustain_at"] = i8::max_value() / 2;
+    adsr1o["release_for"] = 15;
+
+    let mut seq1o = seq::BasicSeq::new();
+    seq1o.beats[1] = true;
+    seq1o.beats[2] = true;
+    seq1o.beats[5] = true;
+    seq1o.beats[6] = true;
+    seq1o.beats[13] = true;
+    seq1o.beats[14] = true;
+    seq1o["tempo"] = 120;
+
+    let mut components: Vec<&mut dyn util::Component> = vec![
+        &mut wto1,
+        &mut wto2,
+        &mut vca1,
+        &mut adsr1,
+        &mut seq1,
+        &mut vca1o,
+        &mut adsr1o,
+        &mut seq1o,
+    ];
 
     // Connect the modulation input of the first oscillator to the
     // output of the second.
@@ -86,6 +115,10 @@ fn main() -> Result<(), Error> {
         (("wto1", "out"), ("vca1", "in_cv")),
         (("seq1", "trigger"), ("adsr1", "trigger")),
         (("seq1", "gate"), ("adsr1", "gate")),
+        (("adsr1o", "out"), ("vca1o", "amp_cv")),
+        (("wto1", "out"), ("vca1o", "in_cv")),
+        (("seq1o", "trigger"), ("adsr1o", "trigger")),
+        (("seq1o", "gate"), ("adsr1o", "gate")),
     ];
 
     // Sanity Check of the wires.
@@ -100,14 +133,12 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    let mut data: Vec<u8> = vec![];
-    let mut counter = 0;
-    let mut counter2 = 0;
+    let len = (util::RATE as usize) * 8;
+    let mut data: Vec<u8> = vec![0; len * 10];
     let mut track_counter = 0;
-    for _ in 0..(util::RATE as usize) * 8 {
+    for cnt in 0..len {
         track_counter = 0;
 
-        counter += 1;
         // Increment all the components.
         for component in components.iter_mut() {
             component.step();
@@ -116,7 +147,7 @@ fn main() -> Result<(), Error> {
                 // The wav lib wants an unsigned value, but audacity expects
                 // a signed value.
                 d += (i8::min_value() as i16).abs();
-                data.push(d as u8);
+                data[(10 * cnt) + track_counter] = d as u8;
                 track_counter += 1;
             }
         }
@@ -129,8 +160,9 @@ fn main() -> Result<(), Error> {
             }
         }
     }
+    println!("{} tracks", track_counter);
     let mut out_file = File::create(Path::new("output.wav"))?;
-    let header = wav::Header::new(1, track_counter, util::RATE.into(), 8);
+    let header = wav::Header::new(1, track_counter as u16, util::RATE.into(), 8);
     wav::write(header, &wav::BitDepth::Eight(data), &mut out_file)?;
 
     println!("Wrote");
