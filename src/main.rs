@@ -6,6 +6,7 @@ use wav;
 mod amp;
 mod env;
 mod osc;
+mod seq;
 mod util;
 
 fn main() -> Result<(), Error> {
@@ -55,7 +56,7 @@ fn main() -> Result<(), Error> {
         (ipc_64_e_map.iter().map(|x| x.abs()).sum::<i16>() as f64) / (ipc_64_e_map.len() as f64)
     );
 
-    let names = vec!["wto1", "wto2", "vca1", "adsr1"];
+    let names = vec!["wto1", "wto2", "vca1", "adsr1", "seq1"];
     let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map[69]);
     wto1.modulation_idx = 32;
 
@@ -63,14 +64,19 @@ fn main() -> Result<(), Error> {
     let mut vca1 = amp::Vca::new(i8::max_value());
 
     let mut adsr1 = env::Adsr::new();
-    adsr1["attack_for"] = 100;
+    adsr1["attack_for"] = 10;
     adsr1["attack_to"] = i8::max_value();
-    adsr1["decay_for"] = 100;
+    adsr1["decay_for"] = 10;
     adsr1["sustain_at"] = i8::max_value() / 2;
-    adsr1["release_for"] = 100;
+    adsr1["release_for"] = 10;
+
+    let mut seq1 = seq::BasicSeq::new();
+    seq1.beats[0] = true;
+    seq1.beats[3] = true;
+    seq1["tempo"] = 120;
 
     let mut components: Vec<&mut dyn util::Component> =
-        vec![&mut wto1, &mut wto2, &mut vca1, &mut adsr1];
+        vec![&mut wto1, &mut wto2, &mut vca1, &mut adsr1, &mut seq1];
 
     // Connect the modulation input of the first oscillator to the
     // output of the second.
@@ -78,6 +84,8 @@ fn main() -> Result<(), Error> {
         (("wto2", "out"), ("wto1", "modulation")),
         (("adsr1", "out"), ("vca1", "amp_cv")),
         (("wto1", "out"), ("vca1", "in_cv")),
+        (("seq1", "trigger"), ("adsr1", "trigger")),
+        (("seq1", "gate"), ("adsr1", "gate")),
     ];
 
     // Sanity Check of the wires.
@@ -95,31 +103,22 @@ fn main() -> Result<(), Error> {
     let mut data: Vec<u8> = vec![];
     let mut counter = 0;
     let mut counter2 = 0;
-    for _ in 0..util::RATE {
-        if counter % 44100 == 0 {
-            counter2 += 1;
-            components[3]["trigger"] = i8::max_value();
-            components[3]["gate"] = i8::max_value();
-            println!("trigger + gate");
-        } else if counter2 != 0 {
-            components[3]["trigger"] = 0;
-            if counter2 == 44100 / 2 {
-                counter2 = 0;
-                components[3]["gate"] = 0;
-                println!("gate off");
-            } else {
-                counter2 += 1;
-            }
-        }
+    let mut track_counter = 0;
+    for _ in 0..(util::RATE as usize) * 8 {
+        track_counter = 0;
+
         counter += 1;
         // Increment all the components.
         for component in components.iter_mut() {
             component.step();
-            let mut d = component["out"] as i16;
-            // The wav lib wants an unsigned value, but audacity expects
-            // a signed value.
-            d += (i8::min_value() as i16).abs();
-            data.push(d as u8);
+            for o in component.outputs() {
+                let mut d = component[o] as i16;
+                // The wav lib wants an unsigned value, but audacity expects
+                // a signed value.
+                d += (i8::min_value() as i16).abs();
+                data.push(d as u8);
+                track_counter += 1;
+            }
         }
         // Update all inputs and outputs as defined by the wires.
         for (src, dst) in wires.iter() {
@@ -131,7 +130,7 @@ fn main() -> Result<(), Error> {
         }
     }
     let mut out_file = File::create(Path::new("output.wav"))?;
-    let header = wav::Header::new(1, names.len() as u16, util::RATE.into(), 8);
+    let header = wav::Header::new(1, track_counter, util::RATE.into(), 8);
     wav::write(header, &wav::BitDepth::Eight(data), &mut out_file)?;
 
     println!("Wrote");
