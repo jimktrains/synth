@@ -113,8 +113,9 @@ impl<'a> Component<'a> for WaveTableOsc {
 
         // Does left shift work the way I want with signed values?
         // I am trying to use the modulation_idx as essentially as a signed Q1.7
-        let m = (self.freq_ipc as i16) * (self.modulation_idx as i16) >> 7;
-        let m = (((self.modulation as i16) * m) >> 7) as i8;
+        //println!("{} {}", self.freq_ipc, self.modulation_idx);
+        let m = (self.freq_ipc as i32) * (self.modulation_idx as i32) >> 7;
+        let m = (((self.modulation as i32) * m) >> 7) as i8;
 
         // I need to double check that this works the way I'm expecting
         // with the wrapping. Also need to think about how this would
