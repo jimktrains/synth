@@ -1,71 +1,18 @@
-use std::fs::File;
+//use std::fs::File;
 use std::io::Error;
-use std::path::Path;
-use wav;
+//use std::path::Path;
+//use wav;
 
 mod amp;
 mod env;
+mod fixed;
 mod mix;
 mod osc;
-//mod out;
-mod fixed;
+mod out;
 mod seq;
 mod util;
 
 fn main() -> Result<(), Error> {
-    let x = fixed::SQ1_7(-1 * (0x100 - 0xB0) as i8);
-    let xp = fixed::SQ8_0(-1 * (0x100 - 0xB0) as i8);
-    let xpp = fixed::SQ1_7(-1 * (0x100 - 0xB1) as i8);
-    let y = fixed::SQ1_7(0x40);
-    let yp = fixed::SQ8_0(0x40);
-    let z = x.clone() * y.clone();
-    let zp = x.clone() * yp.clone();
-    let zxpp = xpp.clone() * yp.clone();
-    let zpp = xp.clone() * yp.clone();
-    println!("{:?} * {:?} = {:?}", x, y, z);
-    println!("{} * {} = {}", x, y, z);
-    println!("{:?} * {:?} = {:?}", x, yp, zp);
-    println!("{} * {} = {}", x, yp, zp);
-    println!("{:?} * {:?} = {:?}", xpp, yp, zxpp);
-    println!("{} * {} = {}", xpp, yp, zxpp);
-    println!("{} * {} = {}", xpp, yp, fixed::SQ8_0::from(zxpp));
-    println!("{:?} * {:?} = {:?}", xp, yp, zpp);
-    println!("{} * {} = {}", xp, yp, zpp);
-
-    let x = 42;
-    println!("{}", fixed::SQ1_31(0x40000000));
-    println!(
-        "{} {} {}",
-        x,
-        1. / (x as f64),
-        fixed::SQ32_0::div(fixed::SQ32_0(1), fixed::SQ32_0(x))
-    );
-
-    let tempo = 45.;
-    println!(
-        "{} bpm = {} ",
-        tempo,
-        util::quarter_point_per_32nd_node(tempo)
-    );
-    let tempo = 60.;
-    println!(
-        "{} bpm = {} ",
-        tempo,
-        util::quarter_point_per_32nd_node(tempo)
-    );
-    let tempo = 90.;
-    println!(
-        "{} bpm = {} ",
-        tempo,
-        util::quarter_point_per_32nd_node(tempo)
-    );
-    let tempo = 120.;
-    println!(
-        "{} bpm = {} ",
-        tempo,
-        util::quarter_point_per_32nd_node(tempo)
-    );
-
     let mut cv_note_map = [0f64; 256];
     let mut ipc_64_map = [0u16; 256];
     let mut ipc_64_e_map = [0i16; 256];
@@ -77,15 +24,6 @@ fn main() -> Result<(), Error> {
 
         //println!("cv={} f={:5.2} ipc={} err={}", cv, f, ipc_64, e);
     }
-
-    println!(
-        "max err = {}",
-        ipc_64_e_map.iter().map(|x| x.abs()).max().unwrap()
-    );
-    println!(
-        "avg err = {}",
-        (ipc_64_e_map.iter().map(|x| x.abs()).sum::<i16>() as f64) / (ipc_64_e_map.len() as f64)
-    );
 
     let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map[69]);
     wto1.modulation_idx = 126;
@@ -128,8 +66,10 @@ fn main() -> Result<(), Error> {
     mix1["a_lvl"] = i8::max_value();
     mix1["b_lvl"] = i8::max_value();
 
+    let mut out1 = out::CpalOut::from_defaults().unwrap();
+
     let names = vec![
-        "wto1", "wto2", "vca1", "adsr1", "seq1", "vca1o", "adsr1o", "seq1o", "mix1",
+        "wto1", "wto2", "vca1", "adsr1", "seq1", "vca1o", "adsr1o", "seq1o", "mix1", "out1",
     ];
     let mut components: Vec<&mut dyn util::Component> = vec![
         &mut wto1,
@@ -141,6 +81,7 @@ fn main() -> Result<(), Error> {
         &mut adsr1o,
         &mut seq1o,
         &mut mix1,
+        &mut out1,
     ];
 
     // Connect the modulation input of the first oscillator to the
@@ -158,6 +99,7 @@ fn main() -> Result<(), Error> {
         (("seq1o", "gate"), ("adsr1o", "gate")),
         (("vca1", "out"), ("mix1", "a")),
         (("vca1o", "out"), ("mix1", "b")),
+        (("mix1", "out"), ("out1", "cv_in")),
     ];
 
     // Sanity Check of the wires.
@@ -204,11 +146,5 @@ fn main() -> Result<(), Error> {
             }
         }
     }
-    println!("{} tracks", track_counter);
-    let mut out_file = File::create(Path::new("output.wav"))?;
-    let header = wav::Header::new(1, track_counter as u16, util::RATE.into(), 8);
-    wav::write(header, &wav::BitDepth::Eight(data), &mut out_file)?;
-
-    println!("Wrote");
     Ok(())
 }

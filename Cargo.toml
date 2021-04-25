@@ -10,3 +10,5 @@ license = "AGPL-3.0-or-late"
 [dependencies]
 rand = "0.7.3"
 wav = "0.6.0"
+cpal = "0.13.3"
+anyhow = "1.0.40"
