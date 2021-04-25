@@ -8,10 +8,39 @@ mod env;
 mod mix;
 mod osc;
 //mod out;
+mod fixed;
 mod seq;
 mod util;
 
 fn main() -> Result<(), Error> {
+    let x = fixed::SQ1_7(-1 * (0x100 - 0xB0) as i8);
+    let xp = fixed::SQ8_0(-1 * (0x100 - 0xB0) as i8);
+    let xpp = fixed::SQ1_7(-1 * (0x100 - 0xB1) as i8);
+    let y = fixed::SQ1_7(0x40);
+    let yp = fixed::SQ8_0(0x40);
+    let z = x.clone() * y.clone();
+    let zp = x.clone() * yp.clone();
+    let zxpp = xpp.clone() * yp.clone();
+    let zpp = xp.clone() * yp.clone();
+    println!("{:?} * {:?} = {:?}", x, y, z);
+    println!("{} * {} = {}", x, y, z);
+    println!("{:?} * {:?} = {:?}", x, yp, zp);
+    println!("{} * {} = {}", x, yp, zp);
+    println!("{:?} * {:?} = {:?}", xpp, yp, zxpp);
+    println!("{} * {} = {}", xpp, yp, zxpp);
+    println!("{} * {} = {}", xpp, yp, fixed::SQ8_0::from(zxpp));
+    println!("{:?} * {:?} = {:?}", xp, yp, zpp);
+    println!("{} * {} = {}", xp, yp, zpp);
+
+    let x = 42;
+    println!("{}", fixed::SQ1_31(0x40000000));
+    println!(
+        "{} {} {}",
+        x,
+        1. / (x as f64),
+        fixed::SQ32_0::div(fixed::SQ32_0(1), fixed::SQ32_0(x))
+    );
+
     let tempo = 45.;
     println!(
         "{} bpm = {} ",
@@ -61,7 +90,9 @@ fn main() -> Result<(), Error> {
     let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map[69]);
     wto1.modulation_idx = 126;
 
-    let mut wto2 = osc::FuncOsc::triangle(ipc_64_map[33]);
+    let mut wto2 = osc::FuncOsc::square(ipc_64_map[69]);
+    wto2.modulation_idx = 126;
+
     let mut vca1 = amp::Vca::new(i8::max_value());
 
     let mut adsr1 = env::Adsr::new();
@@ -116,6 +147,7 @@ fn main() -> Result<(), Error> {
     // output of the second.
     let wires = vec![
         (("wto2", "out"), ("wto1", "modulation")),
+        (("wto1", "out"), ("wto2", "modulation")),
         (("adsr1", "out"), ("vca1", "amp_cv")),
         (("wto1", "out"), ("vca1", "in_cv")),
         (("seq1", "trigger"), ("adsr1", "trigger")),

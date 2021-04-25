@@ -1,7 +1,10 @@
+use crate::fixed::{SQ16_0, SQ1_31, SQ32_0};
 use std::ops::{Index, IndexMut};
 
 // Points per second.
 pub const RATE: u16 = 44_100;
+
+pub const SEC_PER_TICK: SQ1_31 = SQ32_0::inv_u16(RATE);
 
 pub const WAVE_TABLE_SAMPLES_PER_CYCLE: u16 = 1024;
 
