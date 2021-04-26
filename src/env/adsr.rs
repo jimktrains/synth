@@ -60,6 +60,7 @@ impl Adsr {
 }
 
 impl<'a> Component<'a> for Adsr {
+    fn tick(&mut self) {}
     // The floats make me cry.
     fn step(&mut self) {
         let q = i8::max_value() / 4;
@@ -71,7 +72,7 @@ impl<'a> Component<'a> for Adsr {
         self.prev_gate = self.gate;
 
         match (self.state, self.triggered, self.gated) {
-            (AdsrState::Off, false, _) => (),
+            (AdsrState::Off, false, _) => self.counter = 0,
             (AdsrState::Off, true, _) => {
                 self.state = AdsrState::Attack;
                 self.counter = 0;
@@ -81,61 +82,40 @@ impl<'a> Component<'a> for Adsr {
             (_, true, _) => (),
 
             (AdsrState::Attack, false, true) => {
-                self.out = ((self.attack_to as f64) * (self.main_counter as f64)
-                    / ((self.attack_for as f64) * 441.)) as i8;
+                self.out = ((self.attack_to as f64) * (self.counter as f64)
+                    / (self.attack_for as f64)) as i8;
                 if self.counter == self.attack_for {
                     self.state = AdsrState::Decay;
                     self.counter = 0;
                     self.main_counter = 0;
                 } else {
-                    // Inc the counter every 10ms.
-                    //
-                    // I want this to fail, at least now, if this overflows.
-                    self.main_counter = self.main_counter.checked_add(10).unwrap();
-                    if self.main_counter > (((self.counter as u16) + 1) * 441) {
-                        // I want this to fail, at least now, if this overflows.
-                        self.counter = self.counter.checked_add(1).unwrap();
-                    }
+                    self.counter = self.counter.checked_add(1).unwrap();
                 }
             }
             (AdsrState::Decay, false, true) => {
                 self.out = (((self.attack_to as f64) - (self.sustain_at as f64))
-                    * ((441. * (self.decay_for as f64)) - (self.main_counter as f64))
-                    / ((self.decay_for as f64) * 441.)) as i8
+                    * ((self.decay_for as f64) - (self.counter as f64))
+                    / (self.decay_for as f64)) as i8
                     + self.sustain_at;
                 if self.counter == self.decay_for {
                     self.state = AdsrState::Sustain;
                     self.counter = 0;
                     self.main_counter = 0;
                 } else {
-                    // Inc the counter every 10ms.
-                    //
-                    // I want this to fail, at least now, if this overflows.
-                    self.main_counter = self.main_counter.checked_add(10).unwrap();
-                    if self.main_counter > (((self.counter as u16) + 1) * 441) {
-                        // I want this to fail, at least now, if this overflows.
-                        self.counter = self.counter.checked_add(1).unwrap();
-                    }
+                    self.counter = self.counter.checked_add(1).unwrap();
                 }
             }
             (AdsrState::Sustain, false, true) => self.out = self.sustain_at,
             (AdsrState::Release, false, false) => {
                 self.out = ((self.sustain_at as f64)
-                    * ((441. * (self.release_for as f64)) - (self.main_counter as f64))
-                    / ((self.release_for as f64) * 441.)) as i8;
+                    * ((self.release_for as f64) - (self.counter as f64))
+                    / (self.release_for as f64)) as i8;
                 if self.counter == self.release_for {
                     self.state = AdsrState::Off;
                     self.counter = 0;
                     self.main_counter = 0;
                 } else {
-                    // Inc the counter every 10ms.
-                    //
-                    // I want this to fail, at least now, if this overflows.
-                    self.main_counter = self.main_counter.checked_add(10).unwrap();
-                    if self.main_counter > (((self.counter as u16) + 1) * 441) {
-                        // I want this to fail, at least now, if this overflows.
-                        self.counter = self.counter.checked_add(1).unwrap();
-                    }
+                    self.counter = self.counter.checked_add(1).unwrap();
                 }
             }
             // Not sure what to do here? Gated without a trigger?

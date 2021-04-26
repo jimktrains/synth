@@ -25,6 +25,7 @@ impl Mixer {
 }
 
 impl<'a> Component<'a> for Mixer {
+    fn tick(&mut self) {}
     fn step(&mut self) {
         // Does left shift work the way I want with signed values?
         // I am trying to use the amp_cv as essentially as a signed Q1.7

@@ -2,9 +2,9 @@ use crate::fixed::{SQ16_0, SQ1_31, SQ32_0};
 use std::ops::{Index, IndexMut};
 
 // Points per second.
-pub const RATE: u16 = 44_100;
+pub const RATE: u32 = 44_100;
 
-pub const SEC_PER_TICK: SQ1_31 = SQ32_0::inv_u16(RATE);
+// pub const SEC_PER_TICK: SQ1_31 = SQ32_0::inv_u16(RATE);
 
 pub const WAVE_TABLE_SAMPLES_PER_CYCLE: u16 = 1024;
 
@@ -34,6 +34,7 @@ pub fn cv_to_64th_wavetable_increment(cv: i8) -> (f64, u16, f64) {
 
 pub trait Component<'a>: Index<&'a str, Output = i8> + IndexMut<&'a str> {
     fn step(&mut self);
+    fn tick(&mut self);
     fn inputs(&self) -> Vec<&'a str>;
     fn outputs(&self) -> Vec<&'a str>;
 }

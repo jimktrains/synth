@@ -9,33 +9,41 @@ pub struct WaveTableOsc {
     pub counter: u16,
     pub wt: [i8; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
     pub freq_ipc: u16,
+    pub freq: i8,
     pub modulation_idx: i8,
     pub modulation: i8,
     pub phase_offset: i8,
     pub out_cv: i8,
     pub dummy: i8,
+    ipc_64_map: [u16; 256],
 }
 
 impl WaveTableOsc {
     pub fn new(
         wt: [i8; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
-        init_freq_ipc_64: u16,
+        ipc_64_map: [u16; 256],
+        init_freq: i8,
     ) -> WaveTableOsc {
         WaveTableOsc {
             counter: 0,
             wt: wt,
-            freq_ipc: init_freq_ipc_64,
+            freq_ipc: ipc_64_map[init_freq as usize],
+            freq: init_freq,
             modulation_idx: 0,
             modulation: 0,
             phase_offset: 0,
             out_cv: 0,
             dummy: 0,
+            ipc_64_map: ipc_64_map,
         }
     }
 
-    pub fn sin(init_freq_ipc_64: u16) -> WaveTableOsc {
-        let mut wto =
-            WaveTableOsc::new([0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize], init_freq_ipc_64);
+    pub fn sin(ipc_64_map: [u16; 256], init_freq: i8) -> WaveTableOsc {
+        let mut wto = WaveTableOsc::new(
+            [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
+            ipc_64_map,
+            init_freq,
+        );
         for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
             wto.wt[i as usize] = ((((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64)
                 * std::f64::consts::TAU)
@@ -45,9 +53,12 @@ impl WaveTableOsc {
 
         wto
     }
-    pub fn saw(init_freq_ipc_64: u16) -> WaveTableOsc {
-        let mut wto =
-            WaveTableOsc::new([0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize], init_freq_ipc_64);
+    pub fn saw(ipc_64_map: [u16; 256], init_freq: i8) -> WaveTableOsc {
+        let mut wto = WaveTableOsc::new(
+            [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
+            ipc_64_map,
+            init_freq,
+        );
         for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE as usize {
             wto.wt[i] = ((i8::max_value() as f64)
                 - ((u8::max_value() as f64) * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
@@ -56,9 +67,12 @@ impl WaveTableOsc {
 
         wto
     }
-    pub fn triangle(init_freq_ipc_64: u16) -> WaveTableOsc {
-        let mut wto =
-            WaveTableOsc::new([0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize], init_freq_ipc_64);
+    pub fn triangle(ipc_64_map: [u16; 256], init_freq: i8) -> WaveTableOsc {
+        let mut wto = WaveTableOsc::new(
+            [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
+            ipc_64_map,
+            init_freq,
+        );
         for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE as usize {
             if i <= WAVE_TABLE_SAMPLES_PER_CYCLE as usize / 4 {
                 wto.wt[i] = ((i8::max_value() as f64) * (i as f64)
@@ -87,9 +101,12 @@ impl WaveTableOsc {
         wto
     }
 
-    pub fn square(init_freq_ipc_64: u16) -> WaveTableOsc {
-        let mut wto =
-            WaveTableOsc::new([0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize], init_freq_ipc_64);
+    pub fn square(ipc_64_map: [u16; 256], init_freq: i8) -> WaveTableOsc {
+        let mut wto = WaveTableOsc::new(
+            [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
+            ipc_64_map,
+            init_freq,
+        );
         for i in 0..(WAVE_TABLE_SAMPLES_PER_CYCLE as usize) {
             if i <= (WAVE_TABLE_SAMPLES_PER_CYCLE as usize) / 2 {
                 wto.wt[i] = i8::max_value();
@@ -103,7 +120,9 @@ impl WaveTableOsc {
 }
 
 impl<'a> Component<'a> for WaveTableOsc {
+    fn tick(&mut self) {}
     fn step(&mut self) {
+        self.freq_ipc = self.ipc_64_map[self.freq as usize];
         // So, in theory we could have a wt with multiple frames in it,
         // so I don't want to hardcode this right now.
         // let wt_len = (64 * self.wt.len()) as u16;
@@ -127,12 +146,13 @@ impl<'a> Component<'a> for WaveTableOsc {
         // I need to double check that this works the way I'm expecting
         // with the wrapping. Also need to think about how this would
         // be implemented on a microcontroller.
-        let i = (self.counter as i32).wrapping_add(m as i32);
-        let i = i.wrapping_add(self.phase_offset as i32) as u16;
+        let mut i = (self.counter as i32).wrapping_add(m as i32) as usize;
+        i = i.wrapping_add(self.phase_offset as usize);
         // Setting the len to 1024 allows natural wrapping of a u16.
-        // i %= wt_len as i32;
+        i >>= 6;
+        i %= self.wt.len();
 
-        self.out_cv = self.wt[i as usize >> 6];
+        self.out_cv = self.wt[i as usize];
     }
 
     fn inputs(&self) -> Vec<&'a str> {
@@ -158,6 +178,7 @@ impl Index<&str> for WaveTableOsc {
 impl IndexMut<&str> for WaveTableOsc {
     fn index_mut(&mut self, i: &str) -> &mut Self::Output {
         match i {
+            "freq" => &mut self.freq,
             "modulation" => &mut self.modulation,
             "modulation_idx" => &mut self.modulation_idx,
             // This should probably error.

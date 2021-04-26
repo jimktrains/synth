@@ -91,6 +91,7 @@ impl FuncOsc {
 }
 
 impl<'a> Component<'a> for FuncOsc {
+    fn tick(&mut self) {}
     fn step(&mut self) {
         self.counter = self.counter.wrapping_add(self.freq_ipc);
 
