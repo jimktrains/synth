@@ -23,6 +23,8 @@ use crate::seq;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
+pub const AUDIO_BUFFER_LEN: u64 = 512;
+
 pub fn spawn_audio(
     rx: Receiver<Cmd>,
     tx2: Sender<Cmd>,
@@ -67,7 +69,7 @@ pub fn spawn_audio(
             tx2.send(Cmd::Beat(i as i8, *b)).unwrap()
         }
         let beats = Arc::new(RwLock::new(beats));
-        let mut beat_len = Arc::new(RwLock::new([64; 16]));
+        let mut beat_len = Arc::new(RwLock::new([32; 16]));
         let mut seq1 = seq::BasicSeq::new(Arc::clone(&beats), Arc::clone(&beat_len));
 
         let mut vca1o = amp::Vca::new(i8::max_value());
@@ -88,7 +90,7 @@ pub fn spawn_audio(
             tx2.send(Cmd::Obeat(i as i8, *b)).unwrap()
         }
         let obeats = Arc::new(RwLock::new(obeats));
-        let mut obeat_len = Arc::new(RwLock::new([64; 16]));
+        let mut obeat_len = Arc::new(RwLock::new([32; 16]));
         let mut seq1o = seq::BasicSeq::new(Arc::clone(&obeats), Arc::clone(&obeat_len));
 
         let mut mix1 = mix::Mixer::new();
@@ -169,7 +171,7 @@ pub fn spawn_audio(
                 Err(TryRecvError::Empty) => (),
                 Err(TryRecvError::Disconnected) => exit = true,
             }
-            for _ in 0..256 {
+            for _ in 0..AUDIO_BUFFER_LEN {
                 let mut tick = false;
                 cycle_counter += 1;
                 if cycle_counter >= cycles_per_16th {
@@ -199,8 +201,11 @@ pub fn spawn_audio(
 
             let xtime = start.elapsed();
             set_measured_xtime.store(xtime.as_nanos() as u64, Ordering::Relaxed);
-            if (1 * xtime.as_nanos()) < (target_inc * 256) {
-                thread::sleep(Duration::from_nanos((target_inc as u64) * 256) - (1 * xtime));
+            if (1 * xtime.as_nanos()) < (target_inc * AUDIO_BUFFER_LEN as u128) {
+                thread::sleep(
+                    Duration::from_nanos((target_inc as u64) * AUDIO_BUFFER_LEN as u64)
+                        - (1 * xtime),
+                );
             }
         }
     });
