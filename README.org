@@ -1,7 +1,8 @@
-# J-Synth (Jim's Synth)
+* J-Synth (Jim's Synth)
 
-## Goals
-### Design so that it can be ported to an AVR or ARM microcontroller
+** Goals
+
+*** Design so that it can be ported to an AVR or ARM microcontroller
 
 Ideally this would mean avoiding floating point. However, we can use
   fixed-point operations (Q1.7) and integer operations. Ideally casting
@@ -11,10 +12,11 @@ Ideally this would mean avoiding floating point. However, we can use
   to do the fixed point arithmetic, I'll use casts there. (See [[Notes on
   fixed-point arithmetic]] later on.)
 
-### Mimic a modular synth
+*** Mimic a modular synth
 Notes:
-* Modular synths use 10v peak to peak (-5v to 5v).
-* Modular synths use a 1v/octave convention
+
+- Modular synths use 10v peak to peak (-5v to 5v).
+- Modular synths use a 1v/octave convention
 
 I'm going to assume an 8 bit ADC and DAC [fn:1] [fn:3] will be processing the
   control voltages. As such, each volt is roughly 25 steps in the DAC
@@ -31,7 +33,7 @@ I'm going to assume an 8 bit ADC and DAC [fn:1] [fn:3] will be processing the
   step. This gives ~100 step/v. This gives us tremendously better
   accuracy in terms of pitch on a Twelve-tone Equal Temperament Scale.
 
-## <<<Notes on fixed-point aritmetic>>>
+** <<<Notes on fixed-point aritmetic>>>
 
 See
   [[https://www.microchip.com/wwwAppNotes/AppNotes.aspx?appnote=en591233][AVR201:
@@ -39,7 +41,7 @@ See
   implementation.
 
 
-* FMULS
+- FMULS
 #+BEGIN_SRC
 $B0 * $40 = $D800 (remember, AVR stores little endian, so 00:D8)
 1011:0000 * 0100:0000 = 1101:1000 0000:0000
@@ -48,7 +50,7 @@ $B0 * $40 = $D800 (remember, AVR stores little endian, so 00:D8)
 -80 * 0.5 = -40
 #+END_SRC
 
-* MULS
+- MULS
 
 #+BEGIN_SRC
 $B0 * $40 = $EC00 (remember, AVR stores little endian, so 00:D8)
@@ -56,7 +58,7 @@ $B0 * $40 = $EC00 (remember, AVR stores little endian, so 00:D8)
 -80 * 64 = -5120
 #+END_SRC
 
-## ADC table or errors
+** ADC table or errors
 
 | n | N/25 | 2^n/25 |  | N/100 | 2^n/100 |  | N/12 | 2^n/12 |  | n |
   closest 25th | error |  | n | closest 100th | error|
