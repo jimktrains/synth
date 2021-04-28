@@ -1,12 +1,13 @@
 use std::ops::{Index, IndexMut};
+use std::sync::Arc;
+use std::sync::RwLock;
 
-use crate::util::quarter_point_per_32nd_node;
 use crate::util::Component;
 
 pub struct BasicSeq {
     tempo: i8,
-    pub beats: [bool; 16],
-    pub beat_len: [i8; 16],
+    beats: Arc<RwLock<[bool; 16]>>,
+    beat_len: Arc<RwLock<[i8; 16]>>,
     gate: i8,
     trigger: i8,
     counter: u16,
@@ -16,11 +17,11 @@ pub struct BasicSeq {
 }
 
 impl BasicSeq {
-    pub fn new() -> Self {
+    pub fn new(beats: Arc<RwLock<[bool; 16]>>, beat_len: Arc<RwLock<[i8; 16]>>) -> Self {
         BasicSeq {
             tempo: 0,
-            beats: [false; 16],
-            beat_len: [64; 16],
+            beats: beats,
+            beat_len: beat_len,
             gate: 0,
             trigger: 0,
             counter: 0,
@@ -34,7 +35,7 @@ impl BasicSeq {
 impl<'a> Component<'a> for BasicSeq {
     fn step(&mut self) {
         self.trigger = 0;
-        if self.beats[self.beat as usize] {
+        if self.beats.read().unwrap()[self.beat as usize] {
             let c = self.counter.wrapping_add(1);
             if c < self.counter {
                 self.counter = 0;
@@ -42,14 +43,14 @@ impl<'a> Component<'a> for BasicSeq {
             } else {
                 self.counter = c;
             }
-            if (1000 * (self.beat_len[self.beat as usize] as u16)) < self.counter {
+            if (1000 * (self.beat_len.read().unwrap()[self.beat as usize] as u16)) < self.counter {
                 self.gate = 0;
             }
         }
     }
     fn tick(&mut self) {
         self.beat = (self.beat + 1) % 16;
-        if self.beats[self.beat as usize] {
+        if self.beats.read().unwrap()[self.beat as usize] {
             self.gate = i8::max_value();
             self.trigger = i8::max_value();
             self.counter = 0;

@@ -28,24 +28,29 @@ impl CpalOut {
 
         let config = device.default_output_config().unwrap();
         let channels = config.channels() as usize;
-        println!("Output device: {}", device.name()?);
-        println!("Default output config: {:?}", config);
+        // println!("Output device: {}", device.name()?);
+        // println!("Default output config: {:?}", config);
 
         let (tx, rx) = channel();
-        let mut write_data = move |output: &mut [f32], _: &cpal::OutputCallbackInfo| {
+        let mut last_s = 0;
+        let write_data = move |output: &mut [f32], _: &cpal::OutputCallbackInfo| {
             for frame in output.chunks_mut(channels) {
                 let s = rx.try_recv();
                 for sample in frame.iter_mut() {
-                    match s {
-                        Ok(s) => *sample = (s as f32) / (i8::min_value() as f32),
-                        Err(TryRecvError::Empty) => (),
+                    let s = match s {
+                        Ok(s) => {
+                            last_s = s;
+                            s
+                        }
+                        Err(TryRecvError::Empty) => last_s,
                         Err(TryRecvError::Disconnected) => panic!("Rx disconnected"),
-                    }
+                    };
+                    *sample = (s as f32) / (i8::min_value() as f32)
                 }
             }
         };
 
-        println!("{:?}", config.config());
+        // println!("{:?}", config.config());
         let stream = device.build_output_stream(&config.into(), write_data, move |e| {
             println!("{}", e);
         })?;

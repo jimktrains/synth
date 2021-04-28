@@ -58,9 +58,9 @@ impl Events {
                             eprintln!("{}", err);
                             return;
                         }
-                        if !ignore_exit_key.load(Ordering::Relaxed) && key == config.exit_key {
-                            return;
-                        }
+                        //if !ignore_exit_key.load(Ordering::Relaxed) && key == config.exit_key {
+                        //    return;
+                        //}
                     }
                 }
             })
