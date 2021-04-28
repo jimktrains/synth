@@ -2,7 +2,7 @@
 
 ** Goals
 
-*** Design so that it can be ported to an AVR or ARM microcontroller
+*** Design the internals so that it can be ported to an AVR or ARM microcontroller
 
 Ideally this would mean avoiding floating point. However, we can use
   fixed-point operations (Q1.7) and integer operations. Ideally casting
