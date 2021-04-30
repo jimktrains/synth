@@ -4,11 +4,7 @@ use std::ops::{Index, IndexMut};
 use crate::util::Component;
 use std::convert::From;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Scale {
-    CM,
-}
-
+// Twelve-tone equal temper notes, a.k.a. piano tuning.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TtetNote {
     Ab,
@@ -30,7 +26,7 @@ pub enum TtetNote {
     Gs,
 }
 
-// Converts a note from its semitone offset from A
+// Converts a note from its semitone offset from A.
 impl From<u8> for TtetNote {
     fn from(v: u8) -> Self {
         let v = v % 12;
@@ -53,7 +49,7 @@ impl From<u8> for TtetNote {
     }
 }
 
-// Converts a note into its semitone offset from A
+// Converts a note into its semitone offset from A.
 impl From<&TtetNote> for u8 {
     fn from(v: &TtetNote) -> Self {
         match v {
@@ -89,6 +85,7 @@ impl Add<i8> for TtetNote {
 }
 
 impl TtetNote {
+    // NB: I need to redo how I interpret control voltages <-> midi note index.
     pub fn to_freq_cv(&self, octave: u8) -> i8 {
         let v: u8 = self.into();
         if octave < 4 {
@@ -97,6 +94,9 @@ impl TtetNote {
             (69 + ((octave - 3) * (v))) as i8
         }
     }
+
+    // I know very little about music. I think we can construct all scales
+    // based on the root and given semitone intervals.
     pub fn major_scale(&self) -> [TtetNote; 7] {
         let v: u8 = self.into();
 
@@ -122,6 +122,7 @@ pub struct BasicArp {
     dummy: i8,
 }
 
+// A basic arpeggiator that simply cycles thought 7 notes, one per trigger.
 impl BasicArp {
     pub fn new() -> BasicArp {
         BasicArp {
@@ -137,14 +138,10 @@ impl BasicArp {
 }
 
 impl<'a> Component<'a> for BasicArp {
-    fn tick(&mut self) {
-        //if self.trigger_in != 0 {
-        //self.counter = (self.counter + 1) % self.notes.len();
-        //self.note_cv_out = self.notes[self.counter as usize].to_freq_cv(self.octave);
-        //}
-        //println!("{} {}", self.trigger_in, self.note_cv_out);
-    }
+    fn tick(&mut self) {}
     fn step(&mut self) {
+        // NB I'm not sure why this isn't working in the trigger, but
+        // I can track that down later.
         if self.trigger_in != 0 {
             self.counter = (self.counter + 1) % self.notes.len();
             self.note_cv_out = self.notes[self.counter as usize].to_freq_cv(self.octave);

@@ -54,7 +54,7 @@ pub fn spawn_audio(
         let mut wto1o = osc::WaveTableOsc::sin(ipc_64_map, 69);
         wto1.modulation_idx = 126;
 
-        let mut wto2 = osc::FuncOsc::square(ipc_64_map[10]);
+        let mut wto2 = osc::FuncOsc::square(ipc_64_map[4]);
         wto2.modulation_idx = 126;
 
         let mut vca1 = amp::Vca::new(i8::max_value());
@@ -129,7 +129,7 @@ pub fn spawn_audio(
         // Connect the modulation input of the first oscillator to the
         // output of the second.
         let wires = vec![
-            (("wto2", "out"), ("wto1", "modulation")),
+            //(("wto2", "out"), ("wto1", "modulation")),
             //(("wto1", "out"), ("wto2", "modulation")),
             (("adsr1", "out"), ("vca1", "amp_cv")),
             (("wto1", "out"), ("vca1", "in_cv")),
@@ -167,8 +167,6 @@ pub fn spawn_audio(
         let cycles_per_16th = ((60. / ((4 * tempo) as f64)) * (util::RATE as f64)) as u64;
         let mut cycle_counter = 0;
         while !exit {
-            //(target_inc - 2 * delay) {
-
             start = time::Instant::now();
 
             match rx.try_recv() {
@@ -195,7 +193,7 @@ pub fn spawn_audio(
                     cycle_counter = 0;
                     tick = true;
                 }
-                // Increment all the components.
+
                 for component in components.iter_mut() {
                     component.1.step();
                 }
@@ -206,7 +204,7 @@ pub fn spawn_audio(
                         component.1.tick();
                     }
                 }
-                // Update all inputs and outputs as defined by the wires.
+
                 for (src, dst) in wires.iter() {
                     if let Some(i) = components.iter().position(|x| x.0 == src.0) {
                         if let Some(j) = components.iter().position(|x| x.0 == dst.0) {
