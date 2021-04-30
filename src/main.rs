@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::sync::atomic::AtomicI8;
+use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (tx, rx) = channel();
     let (tx2, rx2) = channel();
 
-    let beat = Arc::new(AtomicI8::new(-1));
+    let beat = Arc::new(AtomicI16::new(-1));
     let setbeat = Arc::clone(&beat);
 
     let measured_xtime = Arc::new(AtomicU64::new(0));

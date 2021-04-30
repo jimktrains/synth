@@ -4,18 +4,18 @@ use crate::util::Component;
 use crate::util::WAVE_TABLE_SAMPLES_PER_CYCLE;
 
 pub struct FuncOsc {
-    pub counter: u16,
-    pub f: fn(u16) -> i8,
-    pub freq_ipc: u16,
-    pub modulation_idx: i8,
-    pub modulation: i8,
-    pub phase_offset: i8,
-    pub out_cv: i8,
-    pub dummy: i8,
+    pub counter: u32,
+    pub f: fn(u32) -> i16,
+    pub freq_ipc: u32,
+    pub modulation_idx: i16,
+    pub modulation: i16,
+    pub phase_offset: i16,
+    pub out_cv: i16,
+    pub dummy: i16,
 }
 
 impl FuncOsc {
-    pub fn new(f: fn(u16) -> i8, init_freq_ipc_64: u16) -> Self {
+    pub fn new(f: fn(u32) -> i16, init_freq_ipc_64: u32) -> Self {
         FuncOsc {
             counter: 0,
             f: f,
@@ -28,44 +28,44 @@ impl FuncOsc {
         }
     }
 
-    pub fn saw(init_freq_ipc_64: u16) -> Self {
+    pub fn saw(init_freq_ipc_64: u32) -> Self {
         // TODO: Remove the floating point from this
-        fn f(i: u16) -> i8 {
-            ((i8::max_value() as f64)
-                - ((u8::max_value() as f64) * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
-                as i8
+        fn f(i: u32) -> i16 {
+            ((i16::max_value() as f64)
+                - ((u16::max_value() as f64) * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
+                as i16
         }
 
         FuncOsc::new(f, init_freq_ipc_64)
     }
-    pub fn triangle(init_freq_ipc_64: u16) -> Self {
+    pub fn triangle(init_freq_ipc_64: u32) -> Self {
         // TODO: Remove the floating point from this
-        fn f(i: u16) -> i8 {
+        fn f(i: u32) -> i16 {
             if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 4 {
-                ((i8::max_value() as f64) * (i as f64)
-                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)) as i8
+                ((i16::max_value() as f64) * (i as f64)
+                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)) as i16
             } else if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 2 {
-                ((i8::max_value() as f64)
+                ((i16::max_value() as f64)
                     * (1.
                         - ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))
-                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))) as i8
+                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))) as i16
             } else if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 4 * 3 {
-                ((i8::min_value() as f64)
+                ((i16::min_value() as f64)
                     * ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 2.))
-                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)) as i8
+                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)) as i16
             } else {
-                ((i8::min_value() as f64)
+                ((i16::min_value() as f64)
                     * (1.
                         - ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4. * 3.))
-                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))) as i8
+                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))) as i16
             }
         }
 
         FuncOsc::new(f, init_freq_ipc_64)
     }
-    pub fn white_noise(init_freq_ipc_64: u16) -> Self {
+    pub fn white_noise(init_freq_ipc_64: u32) -> Self {
         // TODO: Remove the floating point from this
-        fn f(i: u16) -> i8 {
+        fn f(i: u32) -> i16 {
             rand::random()
         }
 
@@ -77,12 +77,12 @@ impl FuncOsc {
     // https://web.archive.org/web/20150701033149/home.earthlink.net/~ltrammell/tech/newpink.htm
     // https://arxiv.org/ftp/nlin/papers/0511/0511041.pdf
 
-    pub fn square(init_freq_ipc_64: u16) -> Self {
-        fn f(i: u16) -> i8 {
+    pub fn square(init_freq_ipc_64: u32) -> Self {
+        fn f(i: u32) -> i16 {
             if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 2 {
-                i8::max_value()
+                i16::max_value()
             } else {
-                i8::min_value()
+                i16::min_value()
             }
         }
 
@@ -97,12 +97,12 @@ impl<'a> Component<'a> for FuncOsc {
 
         // Does left shift work the way I want with signed values?
         // I am trying to use the modulation_idx as essentially as a signed Q1.7
-        let m = (((self.modulation as i16) * (self.modulation_idx as i16)) >> 7) as i8;
+        let m = (((self.modulation as i32) * (self.modulation_idx as i32)) >> 7) as i16;
 
         // I need to double check that this works the way I'm expecting
         // with the wrapping. Also need to think about how this would
         // be implemented on a microcontroller.
-        self.counter = (self.counter as i32).wrapping_add(m as i32) as u16;
+        self.counter = (self.counter as i32).wrapping_add(m as i32) as u32;
         // self.counter %= (WAVE_TABLE_SAMPLES_PER_CYCLE * 64);
 
         // I need to double check that this works the way I'm expecting
@@ -112,7 +112,7 @@ impl<'a> Component<'a> for FuncOsc {
         let i = (self.counter as i32).wrapping_add(self.phase_offset as i32);
         //    % (WAVE_TABLE_SAMPLES_PER_CYCLE * 64) as i32;
 
-        self.out_cv = (self.f)((i >> 6) as u16);
+        self.out_cv = (self.f)((i >> 6) as u32);
     }
 
     fn inputs(&self) -> Vec<&'a str> {
@@ -125,7 +125,7 @@ impl<'a> Component<'a> for FuncOsc {
 }
 
 impl Index<&str> for FuncOsc {
-    type Output = i8;
+    type Output = i16;
 
     fn index(&self, i: &str) -> &Self::Output {
         match i {

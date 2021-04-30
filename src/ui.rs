@@ -6,7 +6,7 @@
 use std::sync::mpsc::TryRecvError;
 use std::time;
 
-use std::sync::atomic::AtomicI8;
+use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -38,15 +38,15 @@ use std::sync::mpsc::Sender;
 use crate::tui_util::{Config, Event, Events};
 
 pub enum Cmd {
-    Freq(i8),
-    Beat(i8, bool),
-    Obeat(i8, bool),
+    Freq(i16),
+    Beat(i16, bool),
+    Obeat(i16, bool),
 }
 
 pub fn ui_loop(
     tx: Sender<Cmd>,
     rx2: Receiver<Cmd>,
-    beat: Arc<AtomicI8>,
+    beat: Arc<AtomicI16>,
     measured_xtime: Arc<AtomicU64>,
     target_inc: u128,
 ) -> Result<(), Box<dyn Error>> {

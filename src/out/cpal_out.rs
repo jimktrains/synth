@@ -13,9 +13,9 @@ use crate::util::Component;
 
 pub struct CpalOut {
     stream: Arc<dyn StreamTrait>,
-    dummy: i8,
-    cv_in: i8,
-    buffer: Sender<i8>,
+    dummy: i16,
+    cv_in: i16,
+    buffer: Sender<i16>,
 }
 
 impl CpalOut {
@@ -45,7 +45,7 @@ impl CpalOut {
                         Err(TryRecvError::Empty) => last_s,
                         Err(TryRecvError::Disconnected) => panic!("Rx disconnected"),
                     };
-                    *sample = (s as f32) / (i8::min_value() as f32)
+                    *sample = ((s as f64) / (i16::min_value() as f64)) as f32
                 }
             }
         };
@@ -66,7 +66,7 @@ impl CpalOut {
 }
 
 impl Index<&str> for CpalOut {
-    type Output = i8;
+    type Output = i16;
 
     fn index(&self, i: &str) -> &Self::Output {
         match i {

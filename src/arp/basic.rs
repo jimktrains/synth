@@ -27,8 +27,8 @@ pub enum TtetNote {
 }
 
 // Converts a note from its semitone offset from A.
-impl From<u8> for TtetNote {
-    fn from(v: u8) -> Self {
+impl From<u16> for TtetNote {
+    fn from(v: u16) -> Self {
         let v = v % 12;
 
         match v {
@@ -50,7 +50,7 @@ impl From<u8> for TtetNote {
 }
 
 // Converts a note into its semitone offset from A.
-impl From<&TtetNote> for u8 {
+impl From<&TtetNote> for u16 {
     fn from(v: &TtetNote) -> Self {
         match v {
             TtetNote::A => 0,
@@ -74,31 +74,31 @@ impl From<&TtetNote> for u8 {
     }
 }
 
-impl Add<i8> for TtetNote {
+impl Add<i16> for TtetNote {
     type Output = Self;
 
-    fn add(self, other: i8) -> Self {
-        let v: u8 = (&self).into();
-        let x: u8 = ((v as i16 + (other as i16)) % 12) as u8;
+    fn add(self, other: i16) -> Self {
+        let v: u16 = (&self).into();
+        let x: u16 = ((v as i32 + (other as i32)) % 12) as u16;
         x.into()
     }
 }
 
 impl TtetNote {
     // NB: I need to redo how I interpret control voltages <-> midi note index.
-    pub fn to_freq_cv(&self, octave: u8) -> i8 {
-        let v: u8 = self.into();
+    pub fn to_freq_cv(&self, octave: u16) -> i16 {
+        let v: u16 = self.into();
         if octave < 4 {
-            (69 + (((octave as i8) - 3) * (12 - v) as i8)) as i8
+            (69 + (((octave as i16) - 3) * (12 - v) as i16)) as i16
         } else {
-            (69 + ((octave - 3) * (v))) as i8
+            (69 + ((octave - 3) * (v))) as i16
         }
     }
 
     // I know very little about music. I think we can construct all scales
     // based on the root and given semitone intervals.
     pub fn major_scale(&self) -> [TtetNote; 7] {
-        let v: u8 = self.into();
+        let v: u16 = self.into();
 
         [
             (v + 0).into(),
@@ -113,13 +113,13 @@ impl TtetNote {
 }
 
 pub struct BasicArp {
-    gate_in: i8,
-    trigger_in: i8,
+    gate_in: i16,
+    trigger_in: i16,
     counter: usize,
     pub notes: [TtetNote; 7],
-    note_cv_out: i8,
-    pub octave: u8,
-    dummy: i8,
+    note_cv_out: i16,
+    pub octave: u16,
+    dummy: i16,
 }
 
 // A basic arpeggiator that simply cycles thought 7 notes, one per trigger.
@@ -157,7 +157,7 @@ impl<'a> Component<'a> for BasicArp {
 }
 
 impl Index<&str> for BasicArp {
-    type Output = i8;
+    type Output = i16;
 
     fn index(&self, i: &str) -> &Self::Output {
         match i {

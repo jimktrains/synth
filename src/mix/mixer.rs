@@ -3,12 +3,12 @@ use std::ops::{Index, IndexMut};
 use crate::util::Component;
 
 pub struct Mixer {
-    pub a: i8,
-    pub a_lvl: i8,
-    pub b: i8,
-    pub b_lvl: i8,
-    pub out: i8,
-    pub dummy: i8,
+    pub a: i16,
+    pub a_lvl: i16,
+    pub b: i16,
+    pub b_lvl: i16,
+    pub out: i16,
+    pub dummy: i16,
 }
 
 impl Mixer {
@@ -29,8 +29,8 @@ impl<'a> Component<'a> for Mixer {
     fn step(&mut self) {
         // Does left shift work the way I want with signed values?
         // I am trying to use the amp_cv as essentially as a signed Q1.7
-        let a = (((self.a_lvl as i16) * (self.a as i16)) >> 7) as i8;
-        let b = (((self.b_lvl as i16) * (self.b as i16)) >> 7) as i8;
+        let a = (((self.a_lvl as i32) * (self.a as i32)) >> 7) as i16;
+        let b = (((self.b_lvl as i32) * (self.b as i32)) >> 7) as i16;
 
         self.out = a.saturating_add(b);
     }
@@ -44,7 +44,7 @@ impl<'a> Component<'a> for Mixer {
 }
 
 impl Index<&str> for Mixer {
-    type Output = i8;
+    type Output = i16;
 
     fn index(&self, i: &str) -> &Self::Output {
         match i {

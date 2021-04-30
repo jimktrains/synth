@@ -5,19 +5,19 @@ use std::sync::RwLock;
 use crate::util::Component;
 
 pub struct BasicSeq {
-    tempo: i8,
+    tempo: i16,
     beats: Arc<RwLock<[bool; 16]>>,
-    beat_len: Arc<RwLock<[i8; 16]>>,
-    gate: i8,
-    trigger: i8,
-    counter: u16,
-    beat: i8,
+    beat_len: Arc<RwLock<[i16; 16]>>,
+    gate: i16,
+    trigger: i16,
+    counter: u32,
+    beat: i16,
     half_beat: bool,
-    dummy: i8,
+    dummy: i16,
 }
 
 impl BasicSeq {
-    pub fn new(beats: Arc<RwLock<[bool; 16]>>, beat_len: Arc<RwLock<[i8; 16]>>) -> Self {
+    pub fn new(beats: Arc<RwLock<[bool; 16]>>, beat_len: Arc<RwLock<[i16; 16]>>) -> Self {
         BasicSeq {
             tempo: 0,
             beats: beats,
@@ -43,7 +43,7 @@ impl<'a> Component<'a> for BasicSeq {
             } else {
                 self.counter = c;
             }
-            if (1000 * (self.beat_len.read().unwrap()[self.beat as usize] as u16)) < self.counter {
+            if (1000 * (self.beat_len.read().unwrap()[self.beat as usize] as u32)) < self.counter {
                 self.gate = 0;
             }
         }
@@ -51,8 +51,8 @@ impl<'a> Component<'a> for BasicSeq {
     fn tick(&mut self) {
         self.beat = (self.beat + 1) % 16;
         if self.beats.read().unwrap()[self.beat as usize] {
-            self.gate = i8::max_value();
-            self.trigger = i8::max_value();
+            self.gate = i16::max_value();
+            self.trigger = i16::max_value();
             self.counter = 0;
         } else {
             self.gate = 0;
@@ -71,7 +71,7 @@ impl<'a> Component<'a> for BasicSeq {
 }
 
 impl Index<&str> for BasicSeq {
-    type Output = i8;
+    type Output = i16;
 
     fn index(&self, i: &str) -> &Self::Output {
         match i {

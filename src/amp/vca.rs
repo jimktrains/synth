@@ -2,14 +2,14 @@ use std::ops::{Index, IndexMut};
 
 use crate::util::Component;
 pub struct Vca {
-    pub in_cv: i8,
-    pub amp_cv: i8,
-    pub out_cv: i8,
-    pub dummy: i8,
+    pub in_cv: i16,
+    pub amp_cv: i16,
+    pub out_cv: i16,
+    pub dummy: i16,
 }
 
 impl Vca {
-    pub fn new(init_amp_cv: i8) -> Vca {
+    pub fn new(init_amp_cv: i16) -> Vca {
         Vca {
             in_cv: 0,
             amp_cv: init_amp_cv,
@@ -24,7 +24,7 @@ impl<'a> Component<'a> for Vca {
     fn step(&mut self) {
         // Does left shift work the way I want with signed values?
         // I am trying to use the amp_cv as essentially as a signed Q1.7
-        self.out_cv = (((self.amp_cv as i16) * (self.in_cv as i16)) >> 7) as i8;
+        self.out_cv = (((self.amp_cv as i32) * (self.in_cv as i32)) >> 7) as i16;
     }
     fn inputs(&self) -> Vec<&'a str> {
         vec!["amp_in", "in_cv"]
@@ -36,7 +36,7 @@ impl<'a> Component<'a> for Vca {
 }
 
 impl Index<&str> for Vca {
-    type Output = i8;
+    type Output = i16;
 
     fn index(&self, i: &str) -> &Self::Output {
         match i {

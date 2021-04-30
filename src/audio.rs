@@ -1,7 +1,7 @@
 use std::sync::mpsc::TryRecvError;
 use std::time;
 
-use std::sync::atomic::AtomicI8;
+use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -30,20 +30,20 @@ pub const AUDIO_BUFFER_LEN: u64 = 512;
 pub fn spawn_audio(
     rx: Receiver<Cmd>,
     tx2: Sender<Cmd>,
-    setbeat: Arc<AtomicI8>,
+    setbeat: Arc<AtomicI16>,
     set_measured_xtime: Arc<AtomicU64>,
     target_inc: u128,
 ) {
     thread::spawn(move || {
         let mut cv_note_map = [0f64; 256];
-        let mut ipc_64_map = [0u16; 256];
-        let mut ipc_64_e_map = [0i16; 256];
+        let mut ipc_64_map = [0u32; 256];
+        let mut ipc_64_e_map = [0i32; 256];
 
         for cv in 0..128 {
-            let (f, ipc_64, e) = util::cv_to_64th_wavetable_increment(cv as i8);
+            let (f, ipc_64, e) = util::cv_to_64th_wavetable_increment(cv as i16);
             cv_note_map[cv] = f;
             ipc_64_map[cv] = ipc_64;
-            ipc_64_e_map[cv] = (10_000. * e) as i16;
+            ipc_64_e_map[cv] = (10_000. * e) as i32;
 
             //println!("cv={} f={:5.2} ipc={} err={}", cv, f, ipc_64, e);
         }
@@ -57,13 +57,13 @@ pub fn spawn_audio(
         let mut wto2 = osc::FuncOsc::square(ipc_64_map[4]);
         wto2.modulation_idx = 126;
 
-        let mut vca1 = amp::Vca::new(i8::max_value());
+        let mut vca1 = amp::Vca::new(i16::max_value());
 
         let mut adsr1 = env::Adsr::new();
         adsr1["attack_for"] = 10;
-        adsr1["attack_to"] = i8::max_value();
+        adsr1["attack_to"] = i16::max_value();
         adsr1["decay_for"] = 127;
-        adsr1["sustain_at"] = i8::max_value() / 2;
+        adsr1["sustain_at"] = i16::max_value() / 2;
         adsr1["release_for"] = 127;
 
         let mut beats = [false; 16];
@@ -71,19 +71,19 @@ pub fn spawn_audio(
         beats[4] = true;
         beats[12] = true;
         for (i, b) in beats.iter().enumerate() {
-            tx2.send(Cmd::Beat(i as i8, *b)).unwrap()
+            tx2.send(Cmd::Beat(i as i16, *b)).unwrap()
         }
         let beats = Arc::new(RwLock::new(beats));
         let mut beat_len = Arc::new(RwLock::new([64; 16]));
         let mut seq1 = seq::BasicSeq::new(Arc::clone(&beats), Arc::clone(&beat_len));
 
-        let mut vca1o = amp::Vca::new(i8::max_value());
+        let mut vca1o = amp::Vca::new(i16::max_value());
 
         let mut adsr1o = env::Adsr::new();
         adsr1o["attack_for"] = 50;
-        adsr1o["attack_to"] = i8::max_value() / 2;
+        adsr1o["attack_to"] = i16::max_value() / 2;
         adsr1o["decay_for"] = 15;
-        adsr1o["sustain_at"] = i8::max_value() / 2;
+        adsr1o["sustain_at"] = i16::max_value() / 2;
         adsr1o["release_for"] = 50;
 
         let mut obeats = [false; 16];
@@ -92,15 +92,15 @@ pub fn spawn_audio(
         obeats[10] = true;
         obeats[14] = true;
         for (i, b) in obeats.iter().enumerate() {
-            tx2.send(Cmd::Obeat(i as i8, *b)).unwrap()
+            tx2.send(Cmd::Obeat(i as i16, *b)).unwrap()
         }
         let obeats = Arc::new(RwLock::new(obeats));
         let mut obeat_len = Arc::new(RwLock::new([64; 16]));
         let mut seq1o = seq::BasicSeq::new(Arc::clone(&obeats), Arc::clone(&obeat_len));
 
         let mut mix1 = mix::Mixer::new();
-        mix1["a_lvl"] = i8::max_value();
-        mix1["b_lvl"] = i8::max_value();
+        mix1["a_lvl"] = i16::max_value();
+        mix1["b_lvl"] = i16::max_value();
 
         let mut arp1 = arp::BasicArp::new();
         arp1.notes = arp::TtetNote::C.major_scale();

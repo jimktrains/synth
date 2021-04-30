@@ -12,25 +12,25 @@ enum AdsrState {
 
 #[derive(Debug)]
 pub struct Adsr {
-    attack_for: i8,
-    attack_to: i8,
-    decay_for: i8,
-    sustain_at: i8,
-    release_for: i8,
-    counter: i8,
-    triggered_at: u16,
-    gated_at: u16,
-    gate_closed_at: u16,
-    dummy: i8,
-    prev_trigger: i8,
-    prev_gate: i8,
-    trigger: i8,
+    attack_for: i16,
+    attack_to: i16,
+    decay_for: i16,
+    sustain_at: i16,
+    release_for: i16,
+    counter: i16,
+    triggered_at: u32,
+    gated_at: u32,
+    gate_closed_at: u32,
+    dummy: i16,
+    prev_trigger: i16,
+    prev_gate: i16,
+    trigger: i16,
     triggered: bool,
     gated: bool,
-    gate: i8,
-    out: i8,
+    gate: i16,
+    out: i16,
     state: AdsrState,
-    main_counter: u16,
+    main_counter: u32,
 }
 
 impl Adsr {
@@ -63,7 +63,7 @@ impl<'a> Component<'a> for Adsr {
     fn tick(&mut self) {}
     // The floats make me cry.
     fn step(&mut self) {
-        let q = i8::max_value() / 4;
+        let q = i16::max_value() / 4;
         let tq = 3 * q;
         self.triggered = (!self.triggered) && (self.trigger > tq) && (self.prev_trigger < q);
         self.gated = (self.gated && (self.gate > q)) || (!self.gated && self.gate > tq);
@@ -83,7 +83,7 @@ impl<'a> Component<'a> for Adsr {
 
             (AdsrState::Attack, false, true) => {
                 self.out = ((self.attack_to as f64) * (self.counter as f64)
-                    / (self.attack_for as f64)) as i8;
+                    / (self.attack_for as f64)) as i16;
                 if self.counter == self.attack_for {
                     self.state = AdsrState::Decay;
                     self.counter = 0;
@@ -95,7 +95,7 @@ impl<'a> Component<'a> for Adsr {
             (AdsrState::Decay, false, true) => {
                 self.out = (((self.attack_to as f64) - (self.sustain_at as f64))
                     * ((self.decay_for as f64) - (self.counter as f64))
-                    / (self.decay_for as f64)) as i8
+                    / (self.decay_for as f64)) as i16
                     + self.sustain_at;
                 if self.counter == self.decay_for {
                     self.state = AdsrState::Sustain;
@@ -109,7 +109,7 @@ impl<'a> Component<'a> for Adsr {
             (AdsrState::Release, false, false) => {
                 self.out = ((self.sustain_at as f64)
                     * ((self.release_for as f64) - (self.counter as f64))
-                    / (self.release_for as f64)) as i8;
+                    / (self.release_for as f64)) as i16;
                 if self.counter == self.release_for {
                     self.state = AdsrState::Off;
                     self.counter = 0;
@@ -150,7 +150,7 @@ impl<'a> Component<'a> for Adsr {
 }
 
 impl Index<&str> for Adsr {
-    type Output = i8;
+    type Output = i16;
 
     fn index(&self, i: &str) -> &Self::Output {
         match i {

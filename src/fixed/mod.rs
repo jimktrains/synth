@@ -3,15 +3,15 @@ use std::ops::Mul;
 use std::ops::MulAssign;
 
 #[derive(Eq, PartialEq, Clone, Ord, PartialOrd)]
-pub struct SQ1_7(pub i8);
+pub struct SQ1_7(pub i16);
 #[derive(Eq, PartialEq, Clone, Ord, PartialOrd)]
-pub struct SQ8_0(pub i8);
+pub struct SQ8_0(pub i16);
 #[derive(Eq, PartialEq, Clone, Ord, PartialOrd)]
-pub struct SQ16_0(pub i16);
+pub struct SQ16_0(pub i32);
 #[derive(Eq, PartialEq, Clone, Ord, PartialOrd)]
-pub struct SQ1_15(pub i16);
+pub struct SQ1_15(pub i32);
 #[derive(Eq, PartialEq, Clone, Ord, PartialOrd)]
-pub struct SQ8_8(pub i16);
+pub struct SQ8_8(pub i32);
 
 #[derive(Eq, PartialEq, Clone, Ord, PartialOrd)]
 pub struct SQ1_31(pub i32);
@@ -22,7 +22,7 @@ pub struct SQ16_15(pub i32);
 pub struct SQ32_0(pub i32);
 
 impl SQ32_0 {
-    pub const fn inv_u16(n: u16) -> SQ1_31 {
+    pub const fn inv_u32(n: u32) -> SQ1_31 {
         SQ32_0::div(SQ32_0(1), SQ32_0(n as i32))
     }
 
@@ -96,19 +96,19 @@ impl SQ32_0 {
 
 impl From<SQ8_8> for SQ8_0 {
     fn from(f: SQ8_8) -> Self {
-        SQ8_0((f.0 >> 8) as i8)
+        SQ8_0((f.0 >> 8) as i16)
     }
 }
 impl From<SQ8_8> for SQ1_7 {
     fn from(f: SQ8_8) -> Self {
-        SQ1_7((f.0.wrapping_shl(9).wrapping_shr(9)) as i8)
+        SQ1_7((f.0.wrapping_shl(9).wrapping_shr(9)) as i16)
     }
 }
 
 impl Mul for SQ1_7 {
     type Output = SQ1_15;
     fn mul(self, rhs: Self) -> SQ1_15 {
-        SQ1_15(((self.0 as i16) * (rhs.0 as i16)) << 1)
+        SQ1_15(((self.0 as i32) * (rhs.0 as i32)) << 1)
     }
 }
 
@@ -129,14 +129,14 @@ impl Mul<SQ16_0> for SQ1_15 {
 impl Mul<SQ8_0> for SQ1_7 {
     type Output = SQ8_8;
     fn mul(self, rhs: SQ8_0) -> SQ8_8 {
-        SQ8_8(((self.0 as i16) * (rhs.0 as i16)) << 1)
+        SQ8_8(((self.0 as i32) * (rhs.0 as i32)) << 1)
     }
 }
 
 impl Mul for SQ8_0 {
     type Output = SQ16_0;
     fn mul(self, rhs: Self) -> SQ16_0 {
-        SQ16_0((self.0 as i16) * (rhs.0 as i16))
+        SQ16_0((self.0 as i32) * (rhs.0 as i32))
     }
 }
 
@@ -169,13 +169,13 @@ impl MulAssign for SQ32_0 {
 impl Mul<SQ1_7> for SQ8_0 {
     type Output = SQ8_8;
     fn mul(self, rhs: SQ1_7) -> SQ8_8 {
-        SQ8_8(((self.0 as i16) * (rhs.0 as i16)) << 1)
+        SQ8_8(((self.0 as i32) * (rhs.0 as i32)) << 1)
     }
 }
 impl Mul<SQ1_7> for SQ16_0 {
     type Output = SQ16_0;
     fn mul(self, rhs: SQ1_7) -> SQ16_0 {
-        SQ16_0((((self.0 as i32) * (rhs.0 as i32)) << 1) as i16)
+        SQ16_0((((self.0 as i32) * (rhs.0 as i32)) << 1) as i32)
     }
 }
 
