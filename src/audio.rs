@@ -23,6 +23,8 @@ use crate::seq;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
+use crate::arp;
+
 pub const AUDIO_BUFFER_LEN: u64 = 512;
 
 pub fn spawn_audio(
@@ -49,7 +51,10 @@ pub fn spawn_audio(
         let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map, 69);
         wto1.modulation_idx = 126;
 
-        let mut wto2 = osc::FuncOsc::square(ipc_64_map[69]);
+        let mut wto1o = osc::WaveTableOsc::sin(ipc_64_map, 69);
+        wto1.modulation_idx = 126;
+
+        let mut wto2 = osc::FuncOsc::square(ipc_64_map[10]);
         wto2.modulation_idx = 126;
 
         let mut vca1 = amp::Vca::new(i8::max_value());
@@ -69,7 +74,7 @@ pub fn spawn_audio(
             tx2.send(Cmd::Beat(i as i8, *b)).unwrap()
         }
         let beats = Arc::new(RwLock::new(beats));
-        let mut beat_len = Arc::new(RwLock::new([32; 16]));
+        let mut beat_len = Arc::new(RwLock::new([64; 16]));
         let mut seq1 = seq::BasicSeq::new(Arc::clone(&beats), Arc::clone(&beat_len));
 
         let mut vca1o = amp::Vca::new(i8::max_value());
@@ -79,7 +84,7 @@ pub fn spawn_audio(
         adsr1o["attack_to"] = i8::max_value() / 2;
         adsr1o["decay_for"] = 15;
         adsr1o["sustain_at"] = i8::max_value() / 2;
-        adsr1o["release_for"] = 15;
+        adsr1o["release_for"] = 50;
 
         let mut obeats = [false; 16];
         obeats[2] = true;
@@ -90,56 +95,68 @@ pub fn spawn_audio(
             tx2.send(Cmd::Obeat(i as i8, *b)).unwrap()
         }
         let obeats = Arc::new(RwLock::new(obeats));
-        let mut obeat_len = Arc::new(RwLock::new([32; 16]));
+        let mut obeat_len = Arc::new(RwLock::new([64; 16]));
         let mut seq1o = seq::BasicSeq::new(Arc::clone(&obeats), Arc::clone(&obeat_len));
 
         let mut mix1 = mix::Mixer::new();
         mix1["a_lvl"] = i8::max_value();
         mix1["b_lvl"] = i8::max_value();
 
+        let mut arp1 = arp::BasicArp::new();
+        arp1.notes = arp::TtetNote::C.major_scale();
+
+        let mut arp1o = arp::BasicArp::new();
+        arp1o.notes = arp::TtetNote::Fs.major_scale();
+
         let mut out1 = out::CpalOut::from_defaults().unwrap();
 
-        let names = vec![
-            "wto1", "wto2", "vca1", "adsr1", "seq1", "vca1o", "adsr1o", "seq1o", "mix1", "out1",
-        ];
-        let mut components: Vec<&mut dyn util::Component> = vec![
-            &mut wto1,
-            &mut wto2,
-            &mut vca1,
-            &mut adsr1,
-            &mut seq1,
-            &mut vca1o,
-            &mut adsr1o,
-            &mut seq1o,
-            &mut mix1,
-            &mut out1,
+        let mut components: Vec<(&str, &mut dyn util::Component)> = vec![
+            ("wto1", &mut wto1),
+            ("wto1o", &mut wto1o),
+            ("wto2", &mut wto2),
+            ("vca1", &mut vca1),
+            ("adsr1", &mut adsr1),
+            ("seq1", &mut seq1),
+            ("vca1o", &mut vca1o),
+            ("adsr1o", &mut adsr1o),
+            ("seq1o", &mut seq1o),
+            ("mix1", &mut mix1),
+            ("out1", &mut out1),
+            ("arp1", &mut arp1),
+            ("arp1o", &mut arp1o),
         ];
 
         // Connect the modulation input of the first oscillator to the
         // output of the second.
         let wires = vec![
-            //(("wto2", "out"), ("wto1", "modulation")),
+            (("wto2", "out"), ("wto1", "modulation")),
             //(("wto1", "out"), ("wto2", "modulation")),
             (("adsr1", "out"), ("vca1", "amp_cv")),
             (("wto1", "out"), ("vca1", "in_cv")),
             (("seq1", "trigger"), ("adsr1", "trigger")),
             (("seq1", "gate"), ("adsr1", "gate")),
             (("adsr1o", "out"), ("vca1o", "amp_cv")),
-            (("wto1", "out"), ("vca1o", "in_cv")),
+            (("wto1o", "out"), ("vca1o", "in_cv")),
             (("seq1o", "trigger"), ("adsr1o", "trigger")),
             (("seq1o", "gate"), ("adsr1o", "gate")),
             (("vca1", "out"), ("mix1", "a")),
             (("vca1o", "out"), ("mix1", "b")),
             (("mix1", "out"), ("out1", "cv_in")),
+            (("seq1", "trigger"), ("arp1", "trigger_in")),
+            (("seq1", "gate"), ("arp1", "gate_in")),
+            (("seq1o", "trigger"), ("arp1o", "trigger_in")),
+            (("seq1o", "gate"), ("arp1o", "gate_in")),
+            (("arp1", "note_cv_out"), ("wto1", "freq")),
+            (("arp1o", "note_cv_out"), ("wto1o", "freq")),
         ];
 
         // Sanity Check of the wires.
         for (src, dst) in wires.iter() {
-            if let None = names.iter().position(|&x| x == src.0) {
+            if let None = components.iter().position(|x| x.0 == src.0) {
                 println!("{} not found for {:?}, {:?}", src.0, src, dst);
                 return;
             }
-            if let None = names.iter().position(|&x| x == dst.0) {
+            if let None = components.iter().position(|x| x.0 == dst.0) {
                 println!("{} not found for {:?}, {:?}", dst.0, src, dst);
                 return;
             }
@@ -156,7 +173,7 @@ pub fn spawn_audio(
 
             match rx.try_recv() {
                 Ok(c) => match c {
-                    Cmd::Freq(f) => components[0]["freq"] = f,
+                    Cmd::Freq(f) => components[0].1["freq"] = f,
                     Cmd::Beat(i, b) => {
                         beats.write().unwrap()[i as usize] = b;
                         tx2.send(Cmd::Beat(i, beats.read().unwrap()[i as usize]))
@@ -180,20 +197,20 @@ pub fn spawn_audio(
                 }
                 // Increment all the components.
                 for component in components.iter_mut() {
-                    component.step();
+                    component.1.step();
                 }
 
                 if tick {
-                    setbeat.store(components[7]["beat"], Ordering::Relaxed);
+                    setbeat.store(components[7].1["beat"], Ordering::Relaxed);
                     for component in components.iter_mut() {
-                        component.tick();
+                        component.1.tick();
                     }
                 }
                 // Update all inputs and outputs as defined by the wires.
                 for (src, dst) in wires.iter() {
-                    if let Some(i) = names.iter().position(|&x| x == src.0) {
-                        if let Some(j) = names.iter().position(|&x| x == dst.0) {
-                            components[j][dst.1] = components[i][src.1];
+                    if let Some(i) = components.iter().position(|x| x.0 == src.0) {
+                        if let Some(j) = components.iter().position(|x| x.0 == dst.0) {
+                            components[j].1[dst.1] = components[i].1[src.1];
                         }
                     }
                 }

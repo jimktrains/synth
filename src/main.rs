@@ -5,6 +5,7 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 mod amp;
+mod arp;
 mod audio;
 mod env;
 mod fixed;
