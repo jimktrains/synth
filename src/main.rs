@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use std::error::Error;
 use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU64;

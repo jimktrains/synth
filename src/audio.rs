@@ -108,7 +108,7 @@ pub fn spawn_audio(
         //println!("cv={} f={:5.2} ipc={} err={}", cv, f, ipc_64, e);
     }
 
-    let mut wto1 = osc::WaveTableOsc::triangle(ipc_64_map, 69);
+    let mut wto1 = osc::WaveTableOsc::white_noise(ipc_64_map, 69);
     wto1.modulation_idx = i16::max_value();
 
     let mut wto1o = osc::WaveTableOsc::square(ipc_64_map, 69);
@@ -245,6 +245,9 @@ pub fn spawn_audio(
         if cycle_counter >= cycles_per_16th {
             cycle_counter = 0;
             tick = true;
+            //if let Some(j) = components.iter().position(|x| x.0 == dst.0) {
+            //    components[j].1[dst.1] = components[i].1[src.1];
+            //}
         }
 
         for component in components.iter_mut() {

@@ -5,11 +5,85 @@ extern crate rand;
 use crate::util::Component;
 use crate::util::WAVE_TABLE_SAMPLES_PER_CYCLE;
 use crate::util::WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR;
+lazy_static! {
+    static ref SIN_TABLE: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize] = {
+        let mut wt = [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize];
+        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
+            wt[i as usize] = (((((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))
+                * std::f64::consts::TAU)
+                .sin())
+                * (i16::min_value() as f64)) as i16;
+        }
+        wt
+    };
+    static ref SAW_TABLE: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize] = {
+        let mut wt = [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize];
+        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
+            wt[i as usize] = ((i16::max_value() as f64)
+                - ((u16::max_value() as f64)
+                    * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
+                as i16;
+        }
+        wt
+    };
+    static ref TRIANGLE_TABLE: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize] = {
+        let mut wt = [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize];
+        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
+            wt[i as usize] = if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 4 {
+                ((i16::max_value() as f64) * (i as f64)
+                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)) as i16
+            } else if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 2 {
+                ((i16::max_value() as f64)
+                    * (1.
+                        - ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))
+                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))) as i16
+            } else if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 4 * 3 {
+                ((i16::min_value() as f64)
+                    * ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 2.))
+                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)) as i16
+            } else {
+                ((i16::min_value() as f64)
+                    * (1.
+                        - ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4. * 3.))
+                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))) as i16
+            }
+        }
+        wt
+    };
+    static ref SQUARE_TABLE: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize] = {
+        let mut wt = [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize];
+        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
+            wt[i as usize] = if i <= WAVE_TABLE_SAMPLES_PER_CYCLE / 2 {
+                i16::max_value()
+            } else {
+                i16::min_value()
+            }
+        }
+        wt
+    };
+    static ref WHITE_NOISE_TABLE: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize] = {
+        let mut wt = [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize];
+        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
+            wt[i as usize] = rand::random();
+        }
+        wt
+    };
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum WaveTableChoice {
+    Custom,
+    Sin,
+    Saw,
+    Triangle,
+    Square,
+    WhiteNoise,
+}
 
 pub struct WaveTableOsc {
     pub counter: u32,
     pub wt: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
-    pub freq_ipc: u32,
+    pub which_table: WaveTableChoice,
     pub freq: i16,
     pub modulation_idx: i16,
     pub modulation: i16,
@@ -24,11 +98,11 @@ impl WaveTableOsc {
         wt: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
         ipc_64_map: [u32; 256],
         init_freq: i16,
+        which_table: WaveTableChoice,
     ) -> WaveTableOsc {
         WaveTableOsc {
             counter: 0,
             wt: wt,
-            freq_ipc: ipc_64_map[init_freq as usize],
             freq: init_freq,
             modulation_idx: 0,
             modulation: 0,
@@ -36,106 +110,68 @@ impl WaveTableOsc {
             out_cv: 0,
             dummy: 0,
             ipc_64_map: ipc_64_map,
+            which_table: which_table,
         }
     }
 
     pub fn sin(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
-        let mut wto = WaveTableOsc::new(
+        WaveTableOsc::new(
             [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
             ipc_64_map,
             init_freq,
-        );
-        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
-            wto.wt[i as usize] = (((((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))
-                * std::f64::consts::TAU)
-                .sin())
-                * (i16::min_value() as f64)) as i16;
-        }
-
-        wto
+            WaveTableChoice::Sin,
+        )
     }
     pub fn saw(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
-        let mut wto = WaveTableOsc::new(
+        WaveTableOsc::new(
             [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
             ipc_64_map,
             init_freq,
-        );
-        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE as usize {
-            wto.wt[i] = ((i16::max_value() as f64)
-                - ((u16::max_value() as f64)
-                    * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
-                as i16;
-        }
-
-        wto
+            WaveTableChoice::Saw,
+        )
     }
     pub fn triangle(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
-        let mut wto = WaveTableOsc::new(
+        WaveTableOsc::new(
             [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
             ipc_64_map,
             init_freq,
-        );
-        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE as usize {
-            if i <= WAVE_TABLE_SAMPLES_PER_CYCLE as usize / 4 {
-                wto.wt[i] = ((i16::max_value() as f64) * (i as f64)
-                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))
-                    as i16;
-            } else if i <= (WAVE_TABLE_SAMPLES_PER_CYCLE as usize) / 2 {
-                wto.wt[i] = ((i16::max_value() as f64)
-                    * (1.
-                        - ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))
-                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)))
-                    as i16;
-            } else if i <= (WAVE_TABLE_SAMPLES_PER_CYCLE as usize) / 4 * 3 {
-                wto.wt[i] = ((i16::min_value() as f64)
-                    * ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 2.))
-                    / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.))
-                    as i16;
-            } else {
-                wto.wt[i] = ((i16::min_value() as f64)
-                    * (1.
-                        - ((i as f64) - ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4. * 3.))
-                            / ((WAVE_TABLE_SAMPLES_PER_CYCLE as f64) / 4.)))
-                    as i16;
-            }
-        }
-
-        wto
+            WaveTableChoice::Triangle,
+        )
+    }
+    pub fn square(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
+        WaveTableOsc::new(
+            [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
+            ipc_64_map,
+            init_freq,
+            WaveTableChoice::Square,
+        )
     }
 
-    pub fn square(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
-        let mut wto = WaveTableOsc::new(
+    pub fn white_noise(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
+        WaveTableOsc::new(
             [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
             ipc_64_map,
             init_freq,
-        );
-        for i in 0..(WAVE_TABLE_SAMPLES_PER_CYCLE as usize) {
-            if i <= (WAVE_TABLE_SAMPLES_PER_CYCLE as usize) / 2 {
-                wto.wt[i] = i16::max_value();
-            } else {
-                wto.wt[i] = i16::min_value();
-            }
-        }
-
-        wto
+            WaveTableChoice::WhiteNoise,
+        )
     }
 }
 
 impl Component for WaveTableOsc {
     fn tick(&mut self) {}
     fn step(&mut self) {
-        self.freq_ipc = self.ipc_64_map[self.freq as usize];
+        let freq_ipc = self.ipc_64_map[self.freq as usize];
         // So, in theory we could have a wt with multiple frames in it,
         // so I don't want to hardcode this right now.
         // let wt_len = (64 * self.wt.len()) as u32;
         // Setting the len to 1024 allows natural wrapping of a u32.
 
-        self.counter = self.counter.wrapping_add(self.freq_ipc);
+        self.counter = self.counter.wrapping_add(freq_ipc);
 
         // Does left shift work the way I want with signed values?
         // I am trying to use the modulation_idx as essentially as a signed Q1.7
         //println!("{} {}", self.freq_ipc, self.modulation_idx);
-        let m = ((self.freq_ipc as i64) * (self.modulation_idx as i64)) >> 15;
+        let m = ((freq_ipc as i64) * (self.modulation_idx as i64)) >> 15;
         let m = (((self.modulation as i64) * m) >> 15);
 
         // I need to double check that this works the way I'm expecting
@@ -152,8 +188,16 @@ impl Component for WaveTableOsc {
         // Setting the len to 1024 allows natural wrapping of a u16.
         i /= WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as i64;
         i %= self.wt.len() as i64;
+        let i = i as usize;
 
-        self.out_cv = self.wt[i as usize];
+        self.out_cv = match self.which_table {
+            WaveTableChoice::Custom => self.wt[i],
+            WaveTableChoice::Sin => SIN_TABLE[i],
+            WaveTableChoice::Saw => SAW_TABLE[i],
+            WaveTableChoice::Square => SQUARE_TABLE[i],
+            WaveTableChoice::Triangle => TRIANGLE_TABLE[i],
+            WaveTableChoice::WhiteNoise => WHITE_NOISE_TABLE[i],
+        };
     }
 
     fn inputs(&self) -> Vec<&'static str> {
