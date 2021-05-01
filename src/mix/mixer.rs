@@ -24,21 +24,21 @@ impl Mixer {
     }
 }
 
-impl<'a> Component<'a> for Mixer {
+impl Component for Mixer {
     fn tick(&mut self) {}
     fn step(&mut self) {
         // Does left shift work the way I want with signed values?
         // I am trying to use the amp_cv as essentially as a signed Q1.7
-        let a = (((self.a_lvl as i32) * (self.a as i32)) >> 7) as i16;
-        let b = (((self.b_lvl as i32) * (self.b as i32)) >> 7) as i16;
+        let a = (((self.a_lvl as i32) * (self.a as i32)) >> 15) as i16;
+        let b = (((self.b_lvl as i32) * (self.b as i32)) >> 15) as i16;
 
         self.out = a.saturating_add(b);
     }
-    fn inputs(&self) -> Vec<&'a str> {
+    fn inputs(&self) -> Vec<&'static str> {
         vec!["a", "a_lvl", "b", "b_lvl"]
     }
 
-    fn outputs(&self) -> Vec<&'a str> {
+    fn outputs(&self) -> Vec<&'static str> {
         vec!["out"]
     }
 }

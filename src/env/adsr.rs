@@ -59,7 +59,7 @@ impl Adsr {
     }
 }
 
-impl<'a> Component<'a> for Adsr {
+impl Component for Adsr {
     fn tick(&mut self) {}
     // The floats make me cry.
     fn step(&mut self) {
@@ -132,7 +132,7 @@ impl<'a> Component<'a> for Adsr {
         };
         self.triggered = false;
     }
-    fn inputs(&self) -> Vec<&'a str> {
+    fn inputs(&self) -> Vec<&'static str> {
         vec![
             "attack_for",
             "attack_to",
@@ -144,7 +144,7 @@ impl<'a> Component<'a> for Adsr {
         ]
     }
 
-    fn outputs(&self) -> Vec<&'a str> {
+    fn outputs(&self) -> Vec<&'static str> {
         vec!["out"]
     }
 }

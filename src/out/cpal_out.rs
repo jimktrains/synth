@@ -15,11 +15,13 @@ pub struct CpalOut {
     stream: Arc<dyn StreamTrait>,
     dummy: i16,
     cv_in: i16,
-    buffer: Sender<i16>,
 }
 
 impl CpalOut {
-    pub fn from_defaults() -> anyhow::Result<CpalOut> {
+    pub fn from_defaults<F>(mut next_sample: F) -> anyhow::Result<CpalOut>
+    where
+        F: FnMut() -> i16 + Send + Sync + 'static,
+    {
         let host = cpal::default_host();
 
         let device = host
@@ -28,29 +30,22 @@ impl CpalOut {
 
         let config = device.default_output_config().unwrap();
         let channels = config.channels() as usize;
-        // println!("Output device: {}", device.name()?);
-        // println!("Default output config: {:?}", config);
+        println!("Output device: {}", device.name()?);
+        println!("Default output config: {:?}", config);
 
-        let (tx, rx) = channel();
         let mut last_s = 0;
-        let write_data = move |output: &mut [f32], _: &cpal::OutputCallbackInfo| {
+        let write_data = move |output: &mut [f32], _cbi: &cpal::OutputCallbackInfo| {
             for frame in output.chunks_mut(channels) {
-                let s = rx.try_recv();
+                let samp = next_sample();
+                let s = (((samp) as f64) / (i16::min_value() as f64)) as f32;
                 for sample in frame.iter_mut() {
-                    let s = match s {
-                        Ok(s) => {
-                            last_s = s;
-                            s
-                        }
-                        Err(TryRecvError::Empty) => last_s,
-                        Err(TryRecvError::Disconnected) => panic!("Rx disconnected"),
-                    };
-                    *sample = ((s as f64) / (i16::min_value() as f64)) as f32
+                    *sample = s;
                 }
+                last_s = samp;
             }
         };
 
-        // println!("{:?}", config.config());
+        println!("{:?}", config.config());
         let stream = device.build_output_stream(&config.into(), write_data, move |e| {
             println!("{}", e);
         })?;
@@ -60,43 +55,6 @@ impl CpalOut {
             stream: Arc::new(stream),
             dummy: 0,
             cv_in: 0,
-            buffer: tx,
         })
-    }
-}
-
-impl Index<&str> for CpalOut {
-    type Output = i16;
-
-    fn index(&self, i: &str) -> &Self::Output {
-        match i {
-            _ => &0,
-        }
-    }
-}
-
-impl IndexMut<&str> for CpalOut {
-    fn index_mut(&mut self, i: &str) -> &mut Self::Output {
-        match i {
-            "cv_in" => &mut self.cv_in,
-            _ => &mut self.dummy,
-        }
-    }
-}
-
-impl<'a> Component<'a> for CpalOut {
-    fn tick(&mut self) {}
-    fn step(&mut self) {
-        match self.buffer.send(self.cv_in) {
-            Err(_) => panic!("Tx closed"),
-            _ => (),
-        }
-    }
-    fn inputs(&self) -> Vec<&'a str> {
-        vec!["cv_in"]
-    }
-
-    fn outputs(&self) -> Vec<&'a str> {
-        vec![]
     }
 }

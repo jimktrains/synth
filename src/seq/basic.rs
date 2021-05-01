@@ -32,7 +32,7 @@ impl BasicSeq {
     }
 }
 
-impl<'a> Component<'a> for BasicSeq {
+impl Component for BasicSeq {
     fn step(&mut self) {
         self.trigger = 0;
         if self.beats.read().unwrap()[self.beat as usize] {
@@ -61,11 +61,11 @@ impl<'a> Component<'a> for BasicSeq {
         }
     }
 
-    fn inputs(&self) -> Vec<&'a str> {
+    fn inputs(&self) -> Vec<&'static str> {
         vec!["tempo"]
     }
 
-    fn outputs(&self) -> Vec<&'a str> {
+    fn outputs(&self) -> Vec<&'static str> {
         vec!["gate", "trigger", "beat"]
     }
 }

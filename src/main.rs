@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let target_inc = (1_000_000_000. / (util::RATE as f64)) as u128; //22675; // (1/44100 * 10^9) ns //(((util::RATE as u64) / 100) as u64;
 
-    spawn_audio(rx, tx2, setbeat, set_measured_xtime, target_inc);
+    let cpalOut = spawn_audio(rx, tx2, setbeat, set_measured_xtime, target_inc);
 
     ui_loop(tx, rx2, beat, measured_xtime, target_inc)
 }

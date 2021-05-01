@@ -137,7 +137,7 @@ impl BasicArp {
     }
 }
 
-impl<'a> Component<'a> for BasicArp {
+impl Component for BasicArp {
     fn tick(&mut self) {}
     fn step(&mut self) {
         // NB I'm not sure why this isn't working in the trigger, but
@@ -147,11 +147,11 @@ impl<'a> Component<'a> for BasicArp {
             self.note_cv_out = self.notes[self.counter as usize].to_freq_cv(self.octave);
         }
     }
-    fn inputs(&self) -> Vec<&'a str> {
+    fn inputs(&self) -> Vec<&'static str> {
         vec!["trigger_in", "gate_in"]
     }
 
-    fn outputs(&self) -> Vec<&'a str> {
+    fn outputs(&self) -> Vec<&'static str> {
         vec!["note_cv_out"]
     }
 }

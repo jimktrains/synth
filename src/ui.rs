@@ -189,68 +189,68 @@ pub fn ui_loop(
 
         match events.next().unwrap() {
             Event::Input(key) => match key {
-                Key::Char(c) => match c {
-                    // A
-                    'z' => tx.send(Cmd::Freq(69)).unwrap(),
-                    // A# / Bb
-                    's' => tx.send(Cmd::Freq(70)).unwrap(),
-                    // B
-                    'x' => tx.send(Cmd::Freq(71)).unwrap(),
-                    // C
-                    'c' => tx.send(Cmd::Freq(72)).unwrap(),
-                    // C# /tx.send(Cmd::Freq(
-                    'f' => tx.send(Cmd::Freq(73)).unwrap(),
-                    // D
-                    'v' => tx.send(Cmd::Freq(74)).unwrap(),
-                    // D# /tx.send(Cmd::Freq(
-                    'g' => tx.send(Cmd::Freq(75)).unwrap(),
-                    // E
-                    'b' => tx.send(Cmd::Freq(76)).unwrap(),
-                    // F
-                    'n' => tx.send(Cmd::Freq(77)).unwrap(),
-                    // F# /tx.send(Cmd::Freq(
-                    'j' => tx.send(Cmd::Freq(78)).unwrap(),
-                    // G
-                    'm' => tx.send(Cmd::Freq(79)).unwrap(),
-                    // G# / Ab
-                    'k' => tx.send(Cmd::Freq(80)).unwrap(),
+                //Key::Char(c) => match c {
+                //    // A
+                //    'z' => tx.send(Cmd::Freq(69)).unwrap(),
+                //    // A# / Bb
+                //    's' => tx.send(Cmd::Freq(70)).unwrap(),
+                //    // B
+                //    'x' => tx.send(Cmd::Freq(71)).unwrap(),
+                //    // C
+                //    'c' => tx.send(Cmd::Freq(72)).unwrap(),
+                //    // C# /tx.send(Cmd::Freq(
+                //    'f' => tx.send(Cmd::Freq(73)).unwrap(),
+                //    // D
+                //    'v' => tx.send(Cmd::Freq(74)).unwrap(),
+                //    // D# /tx.send(Cmd::Freq(
+                //    'g' => tx.send(Cmd::Freq(75)).unwrap(),
+                //    // E
+                //    'b' => tx.send(Cmd::Freq(76)).unwrap(),
+                //    // F
+                //    'n' => tx.send(Cmd::Freq(77)).unwrap(),
+                //    // F# /tx.send(Cmd::Freq(
+                //    'j' => tx.send(Cmd::Freq(78)).unwrap(),
+                //    // G
+                //    'm' => tx.send(Cmd::Freq(79)).unwrap(),
+                //    // G# / Ab
+                //    'k' => tx.send(Cmd::Freq(80)).unwrap(),
 
-                    '!' => tx.send(Cmd::Beat(0, 0 == beats[0])).unwrap(),
-                    '@' => tx.send(Cmd::Beat(1, 0 == beats[1])).unwrap(),
-                    '#' => tx.send(Cmd::Beat(2, 0 == beats[2])).unwrap(),
-                    '$' => tx.send(Cmd::Beat(3, 0 == beats[3])).unwrap(),
-                    '%' => tx.send(Cmd::Beat(4, 0 == beats[4])).unwrap(),
-                    '^' => tx.send(Cmd::Beat(5, 0 == beats[5])).unwrap(),
-                    '&' => tx.send(Cmd::Beat(6, 0 == beats[6])).unwrap(),
-                    '*' => tx.send(Cmd::Beat(7, 0 == beats[7])).unwrap(),
-                    'Q' => tx.send(Cmd::Beat(8, 0 == beats[8])).unwrap(),
-                    'W' => tx.send(Cmd::Beat(9, 0 == beats[9])).unwrap(),
-                    'E' => tx.send(Cmd::Beat(10, 0 == beats[10])).unwrap(),
-                    'R' => tx.send(Cmd::Beat(11, 0 == beats[11])).unwrap(),
-                    'T' => tx.send(Cmd::Beat(12, 0 == beats[12])).unwrap(),
-                    'Y' => tx.send(Cmd::Beat(13, 0 == beats[13])).unwrap(),
-                    'U' => tx.send(Cmd::Beat(14, 0 == beats[14])).unwrap(),
-                    'I' => tx.send(Cmd::Beat(15, 0 == beats[15])).unwrap(),
+                //    '!' => tx.send(Cmd::Beat(0, 0 == beats[0])).unwrap(),
+                //    '@' => tx.send(Cmd::Beat(1, 0 == beats[1])).unwrap(),
+                //    '#' => tx.send(Cmd::Beat(2, 0 == beats[2])).unwrap(),
+                //    '$' => tx.send(Cmd::Beat(3, 0 == beats[3])).unwrap(),
+                //    '%' => tx.send(Cmd::Beat(4, 0 == beats[4])).unwrap(),
+                //    '^' => tx.send(Cmd::Beat(5, 0 == beats[5])).unwrap(),
+                //    '&' => tx.send(Cmd::Beat(6, 0 == beats[6])).unwrap(),
+                //    '*' => tx.send(Cmd::Beat(7, 0 == beats[7])).unwrap(),
+                //    'Q' => tx.send(Cmd::Beat(8, 0 == beats[8])).unwrap(),
+                //    'W' => tx.send(Cmd::Beat(9, 0 == beats[9])).unwrap(),
+                //    'E' => tx.send(Cmd::Beat(10, 0 == beats[10])).unwrap(),
+                //    'R' => tx.send(Cmd::Beat(11, 0 == beats[11])).unwrap(),
+                //    'T' => tx.send(Cmd::Beat(12, 0 == beats[12])).unwrap(),
+                //    'Y' => tx.send(Cmd::Beat(13, 0 == beats[13])).unwrap(),
+                //    'U' => tx.send(Cmd::Beat(14, 0 == beats[14])).unwrap(),
+                //    'I' => tx.send(Cmd::Beat(15, 0 == beats[15])).unwrap(),
 
-                    '1' => tx.send(Cmd::Obeat(0, 0 == obeats[0])).unwrap(),
-                    '2' => tx.send(Cmd::Obeat(1, 0 == obeats[1])).unwrap(),
-                    '3' => tx.send(Cmd::Obeat(2, 0 == obeats[2])).unwrap(),
-                    '4' => tx.send(Cmd::Obeat(3, 0 == obeats[3])).unwrap(),
-                    '5' => tx.send(Cmd::Obeat(4, 0 == obeats[4])).unwrap(),
-                    '6' => tx.send(Cmd::Obeat(5, 0 == obeats[5])).unwrap(),
-                    '7' => tx.send(Cmd::Obeat(6, 0 == obeats[6])).unwrap(),
-                    '8' => tx.send(Cmd::Obeat(7, 0 == obeats[7])).unwrap(),
-                    'q' => tx.send(Cmd::Obeat(8, 0 == obeats[8])).unwrap(),
-                    'w' => tx.send(Cmd::Obeat(9, 0 == obeats[9])).unwrap(),
-                    'e' => tx.send(Cmd::Obeat(10, 0 == obeats[10])).unwrap(),
-                    'r' => tx.send(Cmd::Obeat(11, 0 == obeats[11])).unwrap(),
-                    't' => tx.send(Cmd::Obeat(12, 0 == obeats[12])).unwrap(),
-                    'y' => tx.send(Cmd::Obeat(13, 0 == obeats[13])).unwrap(),
-                    'u' => tx.send(Cmd::Obeat(14, 0 == obeats[14])).unwrap(),
-                    'i' => tx.send(Cmd::Obeat(15, 0 == obeats[15])).unwrap(),
+                //    '1' => tx.send(Cmd::Obeat(0, 0 == obeats[0])).unwrap(),
+                //    '2' => tx.send(Cmd::Obeat(1, 0 == obeats[1])).unwrap(),
+                //    '3' => tx.send(Cmd::Obeat(2, 0 == obeats[2])).unwrap(),
+                //    '4' => tx.send(Cmd::Obeat(3, 0 == obeats[3])).unwrap(),
+                //    '5' => tx.send(Cmd::Obeat(4, 0 == obeats[4])).unwrap(),
+                //    '6' => tx.send(Cmd::Obeat(5, 0 == obeats[5])).unwrap(),
+                //    '7' => tx.send(Cmd::Obeat(6, 0 == obeats[6])).unwrap(),
+                //    '8' => tx.send(Cmd::Obeat(7, 0 == obeats[7])).unwrap(),
+                //    'q' => tx.send(Cmd::Obeat(8, 0 == obeats[8])).unwrap(),
+                //    'w' => tx.send(Cmd::Obeat(9, 0 == obeats[9])).unwrap(),
+                //    'e' => tx.send(Cmd::Obeat(10, 0 == obeats[10])).unwrap(),
+                //    'r' => tx.send(Cmd::Obeat(11, 0 == obeats[11])).unwrap(),
+                //    't' => tx.send(Cmd::Obeat(12, 0 == obeats[12])).unwrap(),
+                //    'y' => tx.send(Cmd::Obeat(13, 0 == obeats[13])).unwrap(),
+                //    'u' => tx.send(Cmd::Obeat(14, 0 == obeats[14])).unwrap(),
+                //    'i' => tx.send(Cmd::Obeat(15, 0 == obeats[15])).unwrap(),
 
-                    _ => (),
-                },
+                //    _ => (),
+                //},
                 Key::Esc => break,
                 Key::Up => {}
                 Key::Down => {}
@@ -260,15 +260,15 @@ pub fn ui_loop(
             },
             Event::Tick => {}
         }
-        match rx2.try_recv() {
-            Ok(c) => match c {
-                Cmd::Freq(_) => (),
-                Cmd::Beat(i, b) => beats[i as usize] = 1 * if b { 1 } else { 0 },
-                Cmd::Obeat(i, b) => obeats[i as usize] = 1 * if b { 1 } else { 0 },
-            },
-            Err(TryRecvError::Empty) => (),
-            Err(TryRecvError::Disconnected) => break,
-        }
+        //match rx2.try_recv() {
+        //    Ok(c) => match c {
+        //        Cmd::Freq(_) => (),
+        //        Cmd::Beat(i, b) => beats[i as usize] = 1 * if b { 1 } else { 0 },
+        //        Cmd::Obeat(i, b) => obeats[i as usize] = 1 * if b { 1 } else { 0 },
+        //    },
+        //    Err(TryRecvError::Empty) => (),
+        //    Err(TryRecvError::Disconnected) => break,
+        //}
         prev_beat = beat;
     }
     Ok(())

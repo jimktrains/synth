@@ -4,6 +4,7 @@ extern crate rand;
 
 use crate::util::Component;
 use crate::util::WAVE_TABLE_SAMPLES_PER_CYCLE;
+use crate::util::WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR;
 
 pub struct WaveTableOsc {
     pub counter: u32,
@@ -45,10 +46,10 @@ impl WaveTableOsc {
             init_freq,
         );
         for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
-            wto.wt[i as usize] = ((((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64)
+            wto.wt[i as usize] = (((((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))
                 * std::f64::consts::TAU)
                 .sin())
-                * (i16::max_value() as f64)) as i16;
+                * (i16::min_value() as f64)) as i16;
         }
 
         wto
@@ -61,7 +62,8 @@ impl WaveTableOsc {
         );
         for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE as usize {
             wto.wt[i] = ((i16::max_value() as f64)
-                - ((u16::max_value() as f64) * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
+                - ((u16::max_value() as f64)
+                    * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
                 as i16;
         }
 
@@ -119,7 +121,7 @@ impl WaveTableOsc {
     }
 }
 
-impl<'a> Component<'a> for WaveTableOsc {
+impl Component for WaveTableOsc {
     fn tick(&mut self) {}
     fn step(&mut self) {
         self.freq_ipc = self.ipc_64_map[self.freq as usize];
@@ -133,33 +135,33 @@ impl<'a> Component<'a> for WaveTableOsc {
         // Does left shift work the way I want with signed values?
         // I am trying to use the modulation_idx as essentially as a signed Q1.7
         //println!("{} {}", self.freq_ipc, self.modulation_idx);
-        let m = (self.freq_ipc as i32) * (self.modulation_idx as i32) >> 7;
-        let m = (((self.modulation as i32) * m) >> 7) as i16;
+        let m = ((self.freq_ipc as i64) * (self.modulation_idx as i64)) >> 15;
+        let m = (((self.modulation as i64) * m) >> 15);
 
         // I need to double check that this works the way I'm expecting
         // with the wrapping. Also need to think about how this would
         // be implemented on a microcontroller.
-        self.counter = (self.counter as i32).wrapping_add(m as i32) as u32;
+        self.counter = ((self.counter as i64).wrapping_add(m) % (i32::max_value() as i64)) as u32;
         // Setting the len to 1024 allows natural wrapping of a u32.
         // self.counter %= wt_len;
 
         // I need to double check that this works the way I'm expecting
         // with the wrapping. Also need to think about how this would
         // be implemented on a microcontroller.
-        let mut i = (self.counter as i32).wrapping_add(m as i32) as usize;
-        i = i.wrapping_add(self.phase_offset as usize);
-        // Setting the len to 1024 allows natural wrapping of a u32.
-        i >>= 6;
-        i %= self.wt.len();
+        let mut i = (self.counter as i64).wrapping_add(m as i64);
+        i = i.wrapping_add(self.phase_offset as i64);
+        // Setting the len to 1024 allows natural wrapping of a u16.
+        i /= WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as i64;
+        i %= self.wt.len() as i64;
 
         self.out_cv = self.wt[i as usize];
     }
 
-    fn inputs(&self) -> Vec<&'a str> {
+    fn inputs(&self) -> Vec<&'static str> {
         vec!["modulation_idx", "modulation"]
     }
 
-    fn outputs(&self) -> Vec<&'a str> {
+    fn outputs(&self) -> Vec<&'static str> {
         vec!["out"]
     }
 }

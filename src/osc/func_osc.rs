@@ -32,8 +32,8 @@ impl FuncOsc {
         // TODO: Remove the floating point from this
         fn f(i: u32) -> i16 {
             ((i16::max_value() as f64)
-                - ((u16::max_value() as f64) * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64))))
-                as i16
+                - ((u16::max_value() as f64)
+                    * ((i as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64)))) as i16
         }
 
         FuncOsc::new(f, init_freq_ipc_64)
@@ -90,14 +90,14 @@ impl FuncOsc {
     }
 }
 
-impl<'a> Component<'a> for FuncOsc {
+impl Component for FuncOsc {
     fn tick(&mut self) {}
     fn step(&mut self) {
         self.counter = self.counter.wrapping_add(self.freq_ipc);
 
         // Does left shift work the way I want with signed values?
-        // I am trying to use the modulation_idx as essentially as a signed Q1.7
-        let m = (((self.modulation as i32) * (self.modulation_idx as i32)) >> 7) as i16;
+        // I am trying to use the modulation_idx as essentially as a signed Q1.15
+        let m = (((self.modulation as i32) * (self.modulation_idx as i32)) >> 15) as i16;
 
         // I need to double check that this works the way I'm expecting
         // with the wrapping. Also need to think about how this would
@@ -115,11 +115,11 @@ impl<'a> Component<'a> for FuncOsc {
         self.out_cv = (self.f)((i >> 6) as u32);
     }
 
-    fn inputs(&self) -> Vec<&'a str> {
+    fn inputs(&self) -> Vec<&'static str> {
         vec!["modulation_idx", "modulation"]
     }
 
-    fn outputs(&self) -> Vec<&'a str> {
+    fn outputs(&self) -> Vec<&'static str> {
         vec!["out"]
     }
 }

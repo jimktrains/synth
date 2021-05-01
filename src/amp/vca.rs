@@ -19,18 +19,18 @@ impl Vca {
     }
 }
 
-impl<'a> Component<'a> for Vca {
+impl Component for Vca {
     fn tick(&mut self) {}
     fn step(&mut self) {
         // Does left shift work the way I want with signed values?
-        // I am trying to use the amp_cv as essentially as a signed Q1.7
-        self.out_cv = (((self.amp_cv as i32) * (self.in_cv as i32)) >> 7) as i16;
+        // I am trying to use the amp_cv as essentially as a signed Q1.15
+        self.out_cv = (((self.amp_cv as i32) * (self.in_cv as i32)) >> 15) as i16;
     }
-    fn inputs(&self) -> Vec<&'a str> {
+    fn inputs(&self) -> Vec<&'static str> {
         vec!["amp_in", "in_cv"]
     }
 
-    fn outputs(&self) -> Vec<&'a str> {
+    fn outputs(&self) -> Vec<&'static str> {
         vec!["out"]
     }
 }
