@@ -2,6 +2,9 @@ use std::ops::{Index, IndexMut};
 use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
+use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -14,9 +17,6 @@ use crate::mix;
 use crate::osc;
 use crate::out;
 use crate::seq;
-
-use std::sync::mpsc::Receiver;
-use std::sync::mpsc::Sender;
 
 use crate::util::Component;
 
@@ -108,14 +108,14 @@ pub fn spawn_audio(
         //println!("cv={} f={:5.2} ipc={} err={}", cv, f, ipc_64, e);
     }
 
-    let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map, 69);
-    wto1.modulation_idx = 126;
+    let mut wto1 = osc::WaveTableOsc::triangle(ipc_64_map, 69);
+    wto1.modulation_idx = i16::max_value();
 
-    let mut wto1o = osc::WaveTableOsc::sin(ipc_64_map, 69);
-    wto1.modulation_idx = 126;
+    let mut wto1o = osc::WaveTableOsc::square(ipc_64_map, 69);
+    wto1.modulation_idx = i16::max_value();
 
-    let mut wto2 = osc::FuncOsc::square(ipc_64_map[4]);
-    wto2.modulation_idx = 126;
+    let mut wto2 = osc::WaveTableOsc::sin(ipc_64_map, 69);
+    wto2.modulation_idx = i16::max_value();
 
     let mut vca1 = amp::Vca::new(i16::max_value());
 
@@ -123,8 +123,8 @@ pub fn spawn_audio(
     adsr1["attack_for"] = 2048;
     adsr1["attack_to"] = i16::max_value();
     adsr1["decay_for"] = 1024;
-    adsr1["sustain_at"] = i16::max_value() / 2;
-    adsr1["release_for"] = 4096;
+    adsr1["sustain_at"] = i16::max_value() / 4 * 3;
+    adsr1["release_for"] = 4096 * 2;
 
     let mut beats = [false; 16];
     beats[0] = true;
@@ -134,17 +134,17 @@ pub fn spawn_audio(
         tx2.send(Cmd::Beat(i as i16, *b)).unwrap()
     }
     let beats = Arc::new(RwLock::new(beats));
-    let mut beat_len = Arc::new(RwLock::new([64; 16]));
+    let mut beat_len = Arc::new(RwLock::new([96; 16]));
     let mut seq1 = seq::BasicSeq::new(Arc::clone(&beats), Arc::clone(&beat_len));
 
     let mut vca1o = amp::Vca::new(i16::max_value());
 
     let mut adsr1o = env::Adsr::new();
-    adsr1o["attack_for"] = 50;
-    adsr1o["attack_to"] = i16::max_value() / 2;
-    adsr1o["decay_for"] = 15;
+    adsr1o["attack_for"] = 2048;
+    adsr1o["attack_to"] = i16::max_value() / 4 * 3;
+    adsr1o["decay_for"] = 1024;
     adsr1o["sustain_at"] = i16::max_value() / 2;
-    adsr1o["release_for"] = 50;
+    adsr1o["release_for"] = 4096;
 
     let mut obeats = [false; 16];
     obeats[2] = true;
@@ -171,7 +171,7 @@ pub fn spawn_audio(
     let mut components: Vec<(&str, AvailableComponents)> = vec![
         ("wto1", AvailableComponents::WaveTableOsc(wto1)),
         ("wto1o", AvailableComponents::WaveTableOsc(wto1o)),
-        //("wto2", AvailableComponents::FuncOsc(wto2)),
+        ("wto2", AvailableComponents::WaveTableOsc(wto2)),
         ("vca1", AvailableComponents::Vca(vca1)),
         ("adsr1", AvailableComponents::Adsr(adsr1)),
         ("seq1", AvailableComponents::BasicSeq(seq1)),
@@ -207,6 +207,7 @@ pub fn spawn_audio(
         (("arp1o", "note_cv_out"), ("wto1o", "freq")),
     ];
 
+    let mut exit = false;
     // Sanity Check of the wires.
     for (src, dst) in wires.iter() {
         if let None = components.iter().position(|x| x.0 == src.0) {
@@ -222,23 +223,23 @@ pub fn spawn_audio(
     let cycles_per_16th = ((60. / ((4 * tempo) as f64)) * (util::RATE as f64)) as u64;
     let mut cycle_counter = 0;
     let next_sample = move || -> i16 {
-        //match rx.try_recv() {
-        //    Ok(c) => match c {
-        //        Cmd::Freq(f) => components[0].1["freq"] = f,
-        //        Cmd::Beat(i, b) => {
-        //            beats.write().unwrap()[i as usize] = b;
-        //            tx2.send(Cmd::Beat(i, beats.read().unwrap()[i as usize]))
-        //                .unwrap();
-        //        }
-        //        Cmd::Obeat(i, b) => {
-        //            obeats.write().unwrap()[i as usize] = b;
-        //            tx2.send(Cmd::Obeat(i, obeats.read().unwrap()[i as usize]))
-        //                .unwrap();
-        //        }
-        //    },
-        //    Err(TryRecvError::Empty) => (),
-        //    Err(TryRecvError::Disconnected) => exit = true,
-        //}
+        match rx.try_recv() {
+            Ok(c) => match c {
+                Cmd::Freq(f) => components[0].1["freq"] = f,
+                Cmd::Beat(i, b) => {
+                    beats.write().unwrap()[i as usize] = b;
+                    tx2.send(Cmd::Beat(i, beats.read().unwrap()[i as usize]))
+                        .unwrap();
+                }
+                Cmd::Obeat(i, b) => {
+                    obeats.write().unwrap()[i as usize] = b;
+                    tx2.send(Cmd::Obeat(i, obeats.read().unwrap()[i as usize]))
+                        .unwrap();
+                }
+            },
+            Err(TryRecvError::Empty) => (),
+            Err(TryRecvError::Disconnected) => exit = true,
+        }
         let mut tick = false;
         cycle_counter += 1;
         if cycle_counter >= cycles_per_16th {

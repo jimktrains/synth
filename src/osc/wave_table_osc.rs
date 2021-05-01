@@ -148,8 +148,7 @@ impl Component for WaveTableOsc {
         // I need to double check that this works the way I'm expecting
         // with the wrapping. Also need to think about how this would
         // be implemented on a microcontroller.
-        let mut i = (self.counter as i64).wrapping_add(m as i64);
-        i = i.wrapping_add(self.phase_offset as i64);
+        let mut i = (self.counter as i64).wrapping_add(self.phase_offset as i64);
         // Setting the len to 1024 allows natural wrapping of a u16.
         i /= WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as i64;
         i %= self.wt.len() as i64;

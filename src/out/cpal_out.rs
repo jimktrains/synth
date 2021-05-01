@@ -20,7 +20,7 @@ pub struct CpalOut {
 impl CpalOut {
     pub fn from_defaults<F>(mut next_sample: F) -> anyhow::Result<CpalOut>
     where
-        F: FnMut() -> i16 + Send + Sync + 'static,
+        F: FnMut() -> i16 + Send + 'static,
     {
         let host = cpal::default_host();
 
