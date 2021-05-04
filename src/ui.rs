@@ -39,7 +39,7 @@ use std::sync::mpsc::Sender;
 
 use crate::arp::TtetNote;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct SingleCycleWaveFormItem {
     pub name: String,
     pub path: PathBuf,

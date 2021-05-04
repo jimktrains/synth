@@ -16,7 +16,9 @@ use crate::env;
 use crate::mix;
 use crate::osc;
 use crate::out;
+use crate::rvb;
 use crate::seq;
+use crate::util::RATE;
 
 use crate::util::Component;
 
@@ -32,6 +34,7 @@ enum AvailableComponents {
     Mixer(mix::Mixer),
     Vca(amp::Vca),
     WaveTableOsc(osc::WaveTableOsc),
+    BasicReverb(rvb::BasicReverb),
 }
 
 impl AvailableComponents {
@@ -44,6 +47,7 @@ impl AvailableComponents {
             AvailableComponents::Mixer(x) => x.step(),
             AvailableComponents::Vca(x) => x.step(),
             AvailableComponents::WaveTableOsc(x) => x.step(),
+            AvailableComponents::BasicReverb(x) => x.step(),
         }
     }
     fn tick(&mut self) {
@@ -55,6 +59,7 @@ impl AvailableComponents {
             AvailableComponents::Mixer(x) => x.tick(),
             AvailableComponents::Vca(x) => x.tick(),
             AvailableComponents::WaveTableOsc(x) => x.tick(),
+            AvailableComponents::BasicReverb(x) => x.tick(),
         }
     }
 }
@@ -70,6 +75,7 @@ impl Index<&str> for AvailableComponents {
             AvailableComponents::Mixer(x) => x.index(i),
             AvailableComponents::Vca(x) => x.index(i),
             AvailableComponents::WaveTableOsc(x) => x.index(i),
+            AvailableComponents::BasicReverb(x) => x.index(i),
         }
     }
 }
@@ -84,6 +90,7 @@ impl IndexMut<&str> for AvailableComponents {
             AvailableComponents::Mixer(x) => x.index_mut(i),
             AvailableComponents::Vca(x) => x.index_mut(i),
             AvailableComponents::WaveTableOsc(x) => x.index_mut(i),
+            AvailableComponents::BasicReverb(x) => x.index_mut(i),
         }
     }
 }
@@ -114,7 +121,7 @@ pub fn spawn_audio(
     let mut wto1o = osc::WaveTableOsc::square(ipc_64_map, 69);
     wto1.modulation_idx = i16::max_value();
 
-    let mut wto2 = osc::WaveTableOsc::sin(ipc_64_map, 69);
+    let mut wto2 = osc::WaveTableOsc::sin(ipc_64_map, 0);
     wto2.modulation_idx = i16::max_value();
 
     let mut vca1 = amp::Vca::new(i16::max_value());
@@ -177,6 +184,9 @@ pub fn spawn_audio(
     let mut arp1o = arp::BasicArp::new();
     arp1o.notes = arp::TtetNote::Fs.major_scale();
 
+    let mut rvb1 = rvb::BasicReverb::new();
+    rvb1.delay = (RATE / 10) as i16;
+
     let mut components: Vec<(&str, AvailableComponents)> = vec![
         ("wto1", AvailableComponents::WaveTableOsc(wto1)),
         ("wto1o", AvailableComponents::WaveTableOsc(wto1o)),
@@ -190,30 +200,31 @@ pub fn spawn_audio(
         ("mix1", AvailableComponents::Mixer(mix1)),
         ("arp1", AvailableComponents::BasicArp(arp1)),
         ("arp1o", AvailableComponents::BasicArp(arp1o)),
+        ("rvb1", AvailableComponents::BasicReverb(rvb1)),
     ];
 
     // Connect the modulation input of the first oscillator to the
     // output of the second.
     let wires = vec![
         //(("wto1", "out"), ("mix1", "a")),
-        //(("wto2", "out"), ("wto1", "modulation")),
+        // (("wto2", "out"), ("wto1", "modulation")),
         //(("wto1", "out"), ("wto2", "modulation")),
         (("adsr1", "out"), ("vca1", "amp_cv")),
         (("wto1", "out"), ("vca1", "in_cv")),
         (("seq1", "trigger"), ("adsr1", "trigger")),
         (("seq1", "gate"), ("adsr1", "gate")),
-        (("vca1", "out"), ("mix1", "a")),
+        (("vca1", "out"), ("rvb1", "cv_in")),
         (("seq1", "trigger"), ("arp1", "trigger_in")),
         (("seq1", "gate"), ("arp1", "gate_in")),
         (("arp1", "note_cv_out"), ("wto1", "freq")),
-        (("adsr1o", "out"), ("vca1o", "amp_cv")),
-        (("wto1o", "out"), ("vca1o", "in_cv")),
-        (("seq1o", "trigger"), ("adsr1o", "trigger")),
-        (("seq1o", "gate"), ("adsr1o", "gate")),
-        (("vca1o", "out"), ("mix1", "b")),
-        (("seq1o", "trigger"), ("arp1o", "trigger_in")),
-        (("seq1o", "gate"), ("arp1o", "gate_in")),
-        (("arp1o", "note_cv_out"), ("wto1o", "freq")),
+        //(("adsr1o", "out"), ("vca1o", "amp_cv")),
+        //(("wto1o", "out"), ("vca1o", "in_cv")),
+        //(("seq1o", "trigger"), ("adsr1o", "trigger")),
+        //(("seq1o", "gate"), ("adsr1o", "gate")),
+        //(("vca1o", "out"), ("mix1", "b")),
+        //(("seq1o", "trigger"), ("arp1o", "trigger_in")),
+        //(("seq1o", "gate"), ("arp1o", "gate_in")),
+        //(("arp1o", "note_cv_out"), ("wto1o", "freq")),
     ];
 
     // Sanity Check of the wires.
@@ -354,7 +365,7 @@ pub fn spawn_audio(
                 }
             }
         }
-        if let Some(j) = components.iter().position(|x| x.0 == "vca1") {
+        if let Some(j) = components.iter().position(|x| x.0 == "rvb1") {
             components[j].1["out"]
         } else {
             0

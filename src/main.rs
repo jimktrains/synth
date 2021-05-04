@@ -8,12 +8,9 @@ use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 
-use std::path::Component;
-
 use std::fs;
 use std::fs::DirEntry;
 use std::path::Path;
-use std::path::PathBuf;
 
 mod amp;
 mod arp;
@@ -23,6 +20,7 @@ mod fixed;
 mod mix;
 mod osc;
 mod out;
+mod rvb;
 mod seq;
 mod tui_util;
 mod ui;
@@ -58,7 +56,7 @@ fn visit_dirs(
 fn main() -> Result<(), Box<dyn Error>> {
     let path = Path::new("/home/jim/Downloads/AKWF/");
 
-    let single_cycle_wave_forms =
+    let mut single_cycle_wave_forms =
         visit_dirs(path, &|x: &DirEntry| -> Option<SingleCycleWaveFormItem> {
             let path = x.path();
             if path.extension().unwrap() == "wav" {
@@ -88,6 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             None
         })
         .unwrap();
+    single_cycle_wave_forms.sort();
 
     let (tx, rx) = channel();
     let (tx2, rx2) = channel();

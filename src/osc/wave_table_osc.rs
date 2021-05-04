@@ -193,23 +193,21 @@ impl Component for WaveTableOsc {
         // let wt_len = (64 * self.wt.len()) as u32;
         // Setting the len to 1024 allows natural wrapping of a u32.
 
-        self.counter = self
-            .counter
-            .wrapping_add(WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR);
+        // Does left shift work the way I want with signed values?
+        // I am trying to use the modulation_idx as essentially as a signed Q1.7
+        //println!("{} {}", self.freq_ipc, self.modulation_idx);
+        let m = ((freq_ipc as i64) * (self.modulation_idx as i64)) >> 15;
+        let m = (((self.modulation as i64) * m) >> 15) as u64;
+
+        self.counter = ((self.counter as u64)
+            .wrapping_add(WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as u64)
+            .wrapping_add(m)) as u32;
 
         while self.counter > freq_ipc {
             self.wt_i += 1;
             self.counter -= freq_ipc;
         }
         self.wt_i %= WAVE_TABLE_SAMPLES_PER_CYCLE;
-
-        let i = self.wt_i as usize;
-
-        // // Does left shift work the way I want with signed values?
-        // // I am trying to use the modulation_idx as essentially as a signed Q1.7
-        // //println!("{} {}", self.freq_ipc, self.modulation_idx);
-        // let m = ((freq_ipc as i64) * (self.modulation_idx as i64)) >> 15;
-        // let m = (((self.modulation as i64) * m) >> 15);
 
         // // I need to double check that this works the way I'm expecting
         // // with the wrapping. Also need to think about how this would
@@ -227,6 +225,7 @@ impl Component for WaveTableOsc {
         // i %= self.wt.len() as i64;
         // let i = i as usize;
 
+        let i = self.wt_i as usize;
         self.out_cv = match self.which_table {
             WaveTableChoice::Custom => self.wt[i],
             WaveTableChoice::Sin => SIN_TABLE[i],

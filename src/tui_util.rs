@@ -107,7 +107,7 @@ impl StatefulList {
     }
     pub fn forward(&mut self, f: usize) {
         self.state.select(match self.state.selected() {
-            Some(i) => Some(i.saturating_add(f)),
+            Some(i) => Some(i.saturating_add(f).min(self.item_len - 1)),
             None => Some(f),
         });
     }
