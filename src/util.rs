@@ -7,7 +7,7 @@ pub const RATE: u32 = 44_100;
 
 // pub const SEC_PER_TICK: SQ1_31 = SQ32_0::inv_u32(RATE);
 
-pub const WAVE_TABLE_SAMPLES_PER_CYCLE: u32 = 1024;
+pub const WAVE_TABLE_SAMPLES_PER_CYCLE: u32 = 600;
 pub const WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR: u32 = 256;
 
 // Wave Table Samples per point.
@@ -27,8 +27,7 @@ pub fn cv_to_64th_wavetable_increment(cv: i16) -> (f64, u32, f64) {
     let midi_exp = (midi_note_index - 69.) / 12.;
     let delta = (2f64).powf(midi_exp);
     let f = 440. * delta;
-    // Why dos this 100 need to be here?
-    let ipc = 100. * WAVE_TABLE_SAMPLES_PER_POINT / f;
+    let ipc = WAVE_TABLE_SAMPLES_PER_POINT / f;
     let ipc_64 = ((WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as f64) * ipc) as u32;
     let e = ((ipc_64 as f64) / ((WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as f64) * ipc)) - 1.;
 

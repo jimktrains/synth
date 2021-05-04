@@ -27,10 +27,12 @@ impl Mixer {
 impl Component for Mixer {
     fn tick(&mut self) {}
     fn step(&mut self) {
+        let a = self.a;
+        let b = self.b;
         // Does left shift work the way I want with signed values?
         // I am trying to use the amp_cv as essentially as a signed Q1.7
-        let a = (((self.a_lvl as i32) * (self.a as i32)) >> 15) as i16;
-        let b = (((self.b_lvl as i32) * (self.b as i32)) >> 15) as i16;
+        // let a = (((self.a_lvl as i32) * (self.a as i32)) >> 15) as i16;
+        // let b = (((self.b_lvl as i32) * (self.b as i32)) >> 15) as i16;
 
         self.out = a.saturating_add(b);
     }

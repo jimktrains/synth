@@ -108,7 +108,7 @@ pub fn spawn_audio(
         //println!("cv={} f={:5.2} ipc={} err={}", cv, f, ipc_64, e);
     }
 
-    let mut wto1 = osc::WaveTableOsc::white_noise(ipc_64_map, 69);
+    let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map, 69);
     wto1.modulation_idx = i16::max_value();
 
     let mut wto1o = osc::WaveTableOsc::square(ipc_64_map, 69);
@@ -124,7 +124,14 @@ pub fn spawn_audio(
     adsr1["attack_to"] = i16::max_value();
     adsr1["decay_for"] = 1024;
     adsr1["sustain_at"] = i16::max_value() / 4 * 3;
-    adsr1["release_for"] = 4096 * 2;
+    adsr1["release_for"] = 4096;
+
+    tx2.send(Cmd::AdsrAttackFor(adsr1["attack_for"])).unwrap();
+    tx2.send(Cmd::AdsrAttackTo(adsr1["attack_to"])).unwrap();
+    tx2.send(Cmd::AdsrDecayFor(adsr1["decay_for"])).unwrap();
+    tx2.send(Cmd::AdsrSustainAt(adsr1["sustain_at"])).unwrap();
+    tx2.send(Cmd::AdsrReleaseFor(adsr1["release_for"])).unwrap();
+    println!("in audio release_for {}", adsr1["release_for"]);
 
     let mut beats = [false; 16];
     beats[0] = true;
@@ -134,7 +141,7 @@ pub fn spawn_audio(
         tx2.send(Cmd::Beat(i as i16, *b)).unwrap()
     }
     let beats = Arc::new(RwLock::new(beats));
-    let mut beat_len = Arc::new(RwLock::new([96; 16]));
+    let mut beat_len = Arc::new(RwLock::new([128; 16]));
     let mut seq1 = seq::BasicSeq::new(Arc::clone(&beats), Arc::clone(&beat_len));
 
     let mut vca1o = amp::Vca::new(i16::max_value());
@@ -144,13 +151,13 @@ pub fn spawn_audio(
     adsr1o["attack_to"] = i16::max_value() / 4 * 3;
     adsr1o["decay_for"] = 1024;
     adsr1o["sustain_at"] = i16::max_value() / 2;
-    adsr1o["release_for"] = 4096;
+    adsr1o["release_for"] = 4096 * 4;
 
     let mut obeats = [false; 16];
-    obeats[2] = true;
-    obeats[6] = true;
-    obeats[10] = true;
-    obeats[14] = true;
+    //obeats[2] = true;
+    //obeats[6] = true;
+    //obeats[10] = true;
+    //obeats[14] = true;
     for (i, b) in obeats.iter().enumerate() {
         tx2.send(Cmd::Obeat(i as i16, *b)).unwrap()
     }
@@ -164,6 +171,8 @@ pub fn spawn_audio(
 
     let mut arp1 = arp::BasicArp::new();
     arp1.notes = arp::TtetNote::C.major_scale();
+    arp1.octave = 3;
+    tx2.send(Cmd::Scale(arp::TtetNote::C)).unwrap();
 
     let mut arp1o = arp::BasicArp::new();
     arp1o.notes = arp::TtetNote::Fs.major_scale();
@@ -207,7 +216,6 @@ pub fn spawn_audio(
         (("arp1o", "note_cv_out"), ("wto1o", "freq")),
     ];
 
-    let mut exit = false;
     // Sanity Check of the wires.
     for (src, dst) in wires.iter() {
         if let None = components.iter().position(|x| x.0 == src.0) {
@@ -225,7 +233,83 @@ pub fn spawn_audio(
     let next_sample = move || -> i16 {
         match rx.try_recv() {
             Ok(c) => match c {
+                Cmd::AdsrAttackFor(v) => {
+                    if let Some(j) = components.iter().position(|x| x.0 == "adsr1") {
+                        match &mut components.get_mut(j).unwrap().1 {
+                            AvailableComponents::Adsr(adsr) => {
+                                adsr.attack_for = v;
+                                tx2.send(c).unwrap();
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+                Cmd::AdsrAttackTo(v) => {
+                    if let Some(j) = components.iter().position(|x| x.0 == "adsr1") {
+                        match &mut components.get_mut(j).unwrap().1 {
+                            AvailableComponents::Adsr(adsr) => {
+                                adsr.attack_to = v;
+                                tx2.send(c).unwrap();
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+                Cmd::AdsrDecayFor(v) => {
+                    if let Some(j) = components.iter().position(|x| x.0 == "adsr1") {
+                        match &mut components.get_mut(j).unwrap().1 {
+                            AvailableComponents::Adsr(adsr) => {
+                                adsr.decay_for = v;
+                                tx2.send(c).unwrap();
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+                Cmd::AdsrSustainAt(v) => {
+                    if let Some(j) = components.iter().position(|x| x.0 == "adsr1") {
+                        match &mut components.get_mut(j).unwrap().1 {
+                            AvailableComponents::Adsr(adsr) => {
+                                adsr.sustain_at = v;
+                                tx2.send(c).unwrap();
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+                Cmd::AdsrReleaseFor(v) => {
+                    if let Some(j) = components.iter().position(|x| x.0 == "adsr1") {
+                        match &mut components.get_mut(j).unwrap().1 {
+                            AvailableComponents::Adsr(adsr) => {
+                                adsr.release_for = v;
+                                tx2.send(c).unwrap();
+                            }
+                            _ => (),
+                        }
+                    }
+                }
                 Cmd::Freq(f) => components[0].1["freq"] = f,
+                Cmd::Scale(n) => {
+                    if let Some(j) = components.iter().position(|x| x.0 == "arp1") {
+                        match &mut components.get_mut(j).unwrap().1 {
+                            AvailableComponents::BasicArp(arp) => {
+                                arp.notes = n.major_scale();
+                                tx2.send(Cmd::Scale(n)).unwrap();
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+                Cmd::FileWaveTable(scwf) => {
+                    if let Some(j) = components.iter().position(|x| x.0 == "wto1") {
+                        match &mut components.get_mut(j).unwrap().1 {
+                            AvailableComponents::WaveTableOsc(wt) => {
+                                wt.load_scwf(scwf.path);
+                            }
+                            _ => (),
+                        }
+                    }
+                }
                 Cmd::Beat(i, b) => {
                     beats.write().unwrap()[i as usize] = b;
                     tx2.send(Cmd::Beat(i, beats.read().unwrap()[i as usize]))
@@ -238,7 +322,7 @@ pub fn spawn_audio(
                 }
             },
             Err(TryRecvError::Empty) => (),
-            Err(TryRecvError::Disconnected) => exit = true,
+            Err(TryRecvError::Disconnected) => return 0,
         }
         let mut tick = false;
         cycle_counter += 1;
@@ -255,7 +339,9 @@ pub fn spawn_audio(
         }
 
         if tick {
-            setbeat.store(components[7].1["beat"], Ordering::Relaxed);
+            if let Some(j) = components.iter().position(|x| x.0 == "seq1") {
+                setbeat.store(components[j].1["beat"], Ordering::Relaxed);
+            }
             for component in components.iter_mut() {
                 component.1.tick();
             }
@@ -268,7 +354,7 @@ pub fn spawn_audio(
                 }
             }
         }
-        if let Some(j) = components.iter().position(|x| x.0 == "mix1") {
+        if let Some(j) = components.iter().position(|x| x.0 == "vca1") {
             components[j].1["out"]
         } else {
             0

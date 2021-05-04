@@ -2,6 +2,12 @@ use std::ops::{Index, IndexMut};
 
 extern crate rand;
 
+use std::fs::File;
+use std::path::Path;
+use std::path::PathBuf;
+use wav;
+use wav::bit_depth::BitDepth;
+
 use crate::util::Component;
 use crate::util::WAVE_TABLE_SAMPLES_PER_CYCLE;
 use crate::util::WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR;
@@ -62,9 +68,9 @@ lazy_static! {
         wt
     };
     static ref WHITE_NOISE_TABLE: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize] = {
-        let mut wt = [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize];
-        for i in 0..WAVE_TABLE_SAMPLES_PER_CYCLE {
-            wt[i as usize] = rand::random();
+        let mut wt = [0i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize];
+        for i in 1..WAVE_TABLE_SAMPLES_PER_CYCLE {
+            wt[i as usize] = wt[(i - 1) as usize].wrapping_add(rand::random());
         }
         wt
     };
@@ -82,6 +88,7 @@ pub enum WaveTableChoice {
 
 pub struct WaveTableOsc {
     pub counter: u32,
+    pub wt_i: u32,
     pub wt: [i16; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
     pub which_table: WaveTableChoice,
     pub freq: i16,
@@ -101,6 +108,7 @@ impl WaveTableOsc {
         which_table: WaveTableChoice,
     ) -> WaveTableOsc {
         WaveTableOsc {
+            wt_i: 0,
             counter: 0,
             wt: wt,
             freq: init_freq,
@@ -112,6 +120,25 @@ impl WaveTableOsc {
             ipc_64_map: ipc_64_map,
             which_table: which_table,
         }
+    }
+
+    // Yes, I know, it's not great do this in the audio thread.
+    pub fn load_scwf(&mut self, filename: PathBuf) {
+        let mut inp_file = File::open(filename).unwrap();
+        let (_header, data) = wav::read(&mut inp_file).unwrap();
+
+        match data {
+            BitDepth::Eight(_) => println!("8"),
+            BitDepth::Sixteen(fwt) => {
+                for i in 1..fwt.len().min(WAVE_TABLE_SAMPLES_PER_CYCLE as usize) {
+                    self.wt[i as usize] = fwt[i as usize];
+                }
+            }
+            BitDepth::TwentyFour(_) => println!("25"),
+            BitDepth::ThirtyTwoFloat(_) => println!("32"),
+            BitDepth::Empty => println!("0"),
+        };
+        self.which_table = WaveTableChoice::Custom;
     }
 
     pub fn sin(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
@@ -166,29 +193,39 @@ impl Component for WaveTableOsc {
         // let wt_len = (64 * self.wt.len()) as u32;
         // Setting the len to 1024 allows natural wrapping of a u32.
 
-        self.counter = self.counter.wrapping_add(freq_ipc);
+        self.counter = self
+            .counter
+            .wrapping_add(WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR);
 
-        // Does left shift work the way I want with signed values?
-        // I am trying to use the modulation_idx as essentially as a signed Q1.7
-        //println!("{} {}", self.freq_ipc, self.modulation_idx);
-        let m = ((freq_ipc as i64) * (self.modulation_idx as i64)) >> 15;
-        let m = (((self.modulation as i64) * m) >> 15);
+        while self.counter > freq_ipc {
+            self.wt_i += 1;
+            self.counter -= freq_ipc;
+        }
+        self.wt_i %= WAVE_TABLE_SAMPLES_PER_CYCLE;
 
-        // I need to double check that this works the way I'm expecting
-        // with the wrapping. Also need to think about how this would
-        // be implemented on a microcontroller.
-        self.counter = ((self.counter as i64).wrapping_add(m) % (i32::max_value() as i64)) as u32;
-        // Setting the len to 1024 allows natural wrapping of a u32.
-        // self.counter %= wt_len;
+        let i = self.wt_i as usize;
 
-        // I need to double check that this works the way I'm expecting
-        // with the wrapping. Also need to think about how this would
-        // be implemented on a microcontroller.
-        let mut i = (self.counter as i64).wrapping_add(self.phase_offset as i64);
-        // Setting the len to 1024 allows natural wrapping of a u16.
-        i /= WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as i64;
-        i %= self.wt.len() as i64;
-        let i = i as usize;
+        // // Does left shift work the way I want with signed values?
+        // // I am trying to use the modulation_idx as essentially as a signed Q1.7
+        // //println!("{} {}", self.freq_ipc, self.modulation_idx);
+        // let m = ((freq_ipc as i64) * (self.modulation_idx as i64)) >> 15;
+        // let m = (((self.modulation as i64) * m) >> 15);
+
+        // // I need to double check that this works the way I'm expecting
+        // // with the wrapping. Also need to think about how this would
+        // // be implemented on a microcontroller.
+        // self.counter = ((self.counter as i64).wrapping_add(m) % (i32::max_value() as i64)) as u32;
+        // // Setting the len to 1024 allows natural wrapping of a u32.
+        // // self.counter %= wt_len;
+
+        // // I need to double check that this works the way I'm expecting
+        // // with the wrapping. Also need to think about how this would
+        // // be implemented on a microcontroller.
+        // let mut i = (self.counter as i64).wrapping_add(self.phase_offset as i64);
+        // // Setting the len to 1024 allows natural wrapping of a u16.
+        // i /= WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR as i64;
+        // i %= self.wt.len() as i64;
+        // let i = i as usize;
 
         self.out_cv = match self.which_table {
             WaveTableChoice::Custom => self.wt[i],

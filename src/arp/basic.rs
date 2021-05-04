@@ -1,4 +1,5 @@
-use std::ops::Add;
+use std::fmt;
+use std::ops::{Add, Sub};
 use std::ops::{Index, IndexMut};
 
 use crate::util::Component;
@@ -74,6 +75,34 @@ impl From<&TtetNote> for u16 {
     }
 }
 
+impl fmt::Display for TtetNote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TtetNote::A => "A",
+                TtetNote::As => "A♯",
+                TtetNote::Bb => "B♭",
+                TtetNote::B => "B",
+                TtetNote::C => "C",
+                TtetNote::Cs => "C♯",
+                TtetNote::Db => "D♭",
+                TtetNote::D => "D",
+                TtetNote::Ds => "D♯",
+                TtetNote::Eb => "E♭",
+                TtetNote::E => "E",
+                TtetNote::F => "F",
+                TtetNote::Fs => "F♯",
+                TtetNote::Gb => "G♭",
+                TtetNote::G => "G",
+                TtetNote::Gs => "G♯",
+                TtetNote::Ab => "A♭",
+            }
+        )
+    }
+}
+
 impl Add<i16> for TtetNote {
     type Output = Self;
 
@@ -84,12 +113,22 @@ impl Add<i16> for TtetNote {
     }
 }
 
+impl Sub<i16> for TtetNote {
+    type Output = Self;
+
+    fn sub(self, other: i16) -> Self {
+        let v: u16 = (&self).into();
+        let x: u16 = ((v as i32 - (other as i32)) % 12) as u16;
+        x.into()
+    }
+}
+
 impl TtetNote {
     // NB: I need to redo how I interpret control voltages <-> midi note index.
     pub fn to_freq_cv(&self, octave: u16) -> i16 {
         let v: u16 = self.into();
         if octave < 4 {
-            (69 + (((octave as i16) - 3) * (12 - v) as i16)) as i16
+            (69 + (((octave as i16) - 4) * (12 - v) as i16)) as i16
         } else {
             (69 + ((octave - 3) * (v))) as i16
         }

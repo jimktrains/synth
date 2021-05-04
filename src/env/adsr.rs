@@ -12,11 +12,11 @@ enum AdsrState {
 
 #[derive(Debug)]
 pub struct Adsr {
-    attack_for: i16,
-    attack_to: i16,
-    decay_for: i16,
-    sustain_at: i16,
-    release_for: i16,
+    pub attack_for: i16,
+    pub attack_to: i16,
+    pub decay_for: i16,
+    pub sustain_at: i16,
+    pub release_for: i16,
     counter: i16,
     triggered_at: u32,
     gated_at: u32,
@@ -155,6 +155,11 @@ impl Index<&str> for Adsr {
     fn index(&self, i: &str) -> &Self::Output {
         match i {
             "out" => &self.out,
+            "attack_for" => &self.attack_for,
+            "attack_to" => &self.attack_to,
+            "decay_for" => &self.decay_for,
+            "sustain_at" => &self.sustain_at,
+            "release_for" => &self.release_for,
             _ => &0,
         }
     }
