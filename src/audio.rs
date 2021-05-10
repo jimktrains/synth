@@ -185,9 +185,9 @@ pub fn spawn_audio(
     arp1o.notes = arp::TtetNote::Fs.major_scale();
 
     let mut rvb1 = rvb::BasicReverb::new();
-    rvb1.delay = (RATE / 10) as i16;
+    rvb1.delay = (RATE / 15) as i16;
 
-    let mut components: Vec<(&str, AvailableComponents)> = vec![
+    let mut components = vec![vec![
         ("wto1", AvailableComponents::WaveTableOsc(wto1)),
         ("wto1o", AvailableComponents::WaveTableOsc(wto1o)),
         ("wto2", AvailableComponents::WaveTableOsc(wto2)),
@@ -201,11 +201,11 @@ pub fn spawn_audio(
         ("arp1", AvailableComponents::BasicArp(arp1)),
         ("arp1o", AvailableComponents::BasicArp(arp1o)),
         ("rvb1", AvailableComponents::BasicReverb(rvb1)),
-    ];
+    ]];
 
     // Connect the modulation input of the first oscillator to the
     // output of the second.
-    let wires = vec![
+    let wires = vec![vec![
         //(("wto1", "out"), ("mix1", "a")),
         // (("wto2", "out"), ("wto1", "modulation")),
         //(("wto1", "out"), ("wto2", "modulation")),
@@ -225,7 +225,7 @@ pub fn spawn_audio(
         //(("seq1o", "trigger"), ("arp1o", "trigger_in")),
         //(("seq1o", "gate"), ("arp1o", "gate_in")),
         //(("arp1o", "note_cv_out"), ("wto1o", "freq")),
-    ];
+    ]];
 
     // Sanity Check of the wires.
     for (src, dst) in wires.iter() {

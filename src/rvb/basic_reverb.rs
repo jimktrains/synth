@@ -35,21 +35,19 @@ impl Component for BasicReverb {
         self.buffer[self.counter] = self.cv_in;
 
         self.out_cv = 0;
-        for i in 0..4 {
-            let j = self.counter - i;
-            self.out_cv = self
-                .out_cv
-                //.saturating_add(self.buffer[(j - (9 * delay)) % (9 * delay)] / 32)
-                //.saturating_add(self.buffer[(j - (8 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (7 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (6 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (5 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (4 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (3 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (2 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (1 * delay)) % (9 * delay)] / 32);
-        }
-        self.out_cv = self.out_cv.saturating_add(self.cv_in);
+        let j = self.counter;
+        self.out_cv = self
+            .out_cv
+            //.saturating_add(self.buffer[(j - (9 * delay)) % (9 * delay)] / 32)
+            //.saturating_add(self.buffer[(j - (8 * delay)) % (9 * delay)] / 32)
+            //.saturating_add(self.buffer[(j - (7 * delay)) % (9 * delay)] / 32)
+            //.saturating_add(self.buffer[(j - (6 * delay)) % (9 * delay)] / 32)
+            //.saturating_add(self.buffer[(j - (5 * delay)) % (9 * delay)] / 8)
+            //.saturating_add(self.buffer[(j - (4 * delay)) % (9 * delay)] / 8)
+            //.saturating_add(self.buffer[(j - (3 * delay)) % (9 * delay)] / 8)
+            //.saturating_add(self.buffer[(j - (2 * delay)) % (9 * delay)] / 8)
+            .saturating_add(self.buffer[(j.wrapping_sub((1 * delay))) % (9 * delay)] / 8)
+            .saturating_add(self.buffer[(j.wrapping_sub((0 * delay))) % (9 * delay)]);
 
         self.counter = (self.counter + 1) % (9 * delay);
     }

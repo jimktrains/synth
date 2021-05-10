@@ -10,8 +10,6 @@ use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::sync::RwLock;
-use std::thread;
 
 use crate::tui_util::StatefulList;
 use argh::FromArgs;
@@ -33,7 +31,6 @@ use tui::{
 use tui::{backend::TermionBackend, Terminal};
 
 use std::path::PathBuf;
-use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
@@ -54,16 +51,16 @@ impl<'a> From<&SingleCycleWaveFormItem> for Text<'a> {
 use crate::tui_util::{Config, Event, Events};
 
 pub enum Cmd {
-    Freq(i16),
-    Beat(i16, bool),
-    Obeat(i16, bool),
-    FileWaveTable(SingleCycleWaveFormItem),
-    Scale(TtetNote), // Major Scale only right now, and only octave 4
-    AdsrAttackFor(i16),
-    AdsrAttackTo(i16),
-    AdsrDecayFor(i16),
-    AdsrSustainAt(i16),
-    AdsrReleaseFor(i16),
+    Freq(usize, i16),
+    Beat(usize, i16, bool),
+    Obeat(usize, i16, bool),
+    FileWaveTable(usize, SingleCycleWaveFormItem),
+    Scale(usize, TtetNote), // Major Scale only right now, and only octave 4
+    AdsrAttackFor(usize, i16),
+    AdsrAttackTo(usize, i16),
+    AdsrDecayFor(usize, i16),
+    AdsrSustainAt(usize, i16),
+    AdsrReleaseFor(usize, i16),
 }
 
 pub fn ui_loop(
