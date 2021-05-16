@@ -185,7 +185,9 @@ pub fn spawn_audio(
     arp1o.notes = arp::TtetNote::Fs.major_scale();
 
     let mut rvb1 = rvb::BasicReverb::new();
-    rvb1.delay = (RATE / 10) as i16;
+    rvb1.delay[0] = (RATE / 3) as i16;
+    rvb1.delay[1] = (RATE / 5) as i16;
+    rvb1.delay[2] = (RATE / 8) as i16;
 
     let mut components: Vec<(&str, AvailableComponents)> = vec![
         ("wto1", AvailableComponents::WaveTableOsc(wto1)),

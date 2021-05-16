@@ -4,8 +4,9 @@ use crate::util::Component;
 use crate::util::RATE;
 
 pub struct BasicReverb {
-    buffer: [i16; RATE as usize],
-    pub delay: i16,
+    buffer: [[i16; RATE as usize]; 3],
+    pub delay: [i16; 3],
+    pub gain: [f32; 3],
     cv_in: i16,
     out_cv: i16,
     dummy: i16,
@@ -16,8 +17,9 @@ pub struct BasicReverb {
 impl BasicReverb {
     pub fn new() -> BasicReverb {
         BasicReverb {
-            buffer: [0i16; RATE as usize],
-            delay: 0i16,
+            buffer: [[0i16; RATE as usize]; 3],
+            delay: [0i16; 3],
+            gain: [0.25f32; 3],
             cv_in: 0i16,
             out_cv: 0i16,
             dummy: 0i16,
@@ -30,28 +32,24 @@ impl BasicReverb {
 impl Component for BasicReverb {
     fn tick(&mut self) {}
     fn step(&mut self) {
-        let delay = self.delay.abs() as usize;
+        let mut inv = self.cv_in;
+        inv = ((inv as f32) * (1. - 0.25)) as i16;
+        for i in 0..3 {
+            let delay = self.delay[i].abs() as usize;
+            let gain = self.gain[i];
+            let buffer = self.buffer.get_mut(i).unwrap();
+            let counter = self.counter % delay;
 
-        self.buffer[self.counter] = self.cv_in;
+            inv = ((inv as f32) * (1. - gain)) as i16;
+            let delayed_i = (counter + 1) % delay;
+            let delayed = ((1. - (gain * gain)) * (buffer[delayed_i] as f32)) as i16;
+            inv = inv.saturating_add(delayed);
 
-        self.out_cv = 0;
-        for i in 0..4 {
-            let j = self.counter - i;
-            self.out_cv = self
-                .out_cv
-                //.saturating_add(self.buffer[(j - (9 * delay)) % (9 * delay)] / 32)
-                //.saturating_add(self.buffer[(j - (8 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (7 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (6 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (5 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (4 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (3 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (2 * delay)) % (9 * delay)] / 32)
-                .saturating_add(self.buffer[(j - (1 * delay)) % (9 * delay)] / 32);
+            buffer[counter] = self.cv_in + ((gain * (buffer[counter] as f32)) as i16);
         }
-        self.out_cv = self.out_cv.saturating_add(self.cv_in);
 
-        self.counter = (self.counter + 1) % (9 * delay);
+        self.out_cv = inv;
+        self.counter += 1;
     }
 
     fn inputs(&self) -> Vec<&'static str> {
