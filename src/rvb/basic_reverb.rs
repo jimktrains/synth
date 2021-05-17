@@ -33,7 +33,6 @@ impl Component for BasicReverb {
     fn tick(&mut self) {}
     fn step(&mut self) {
         let mut inv = self.cv_in;
-        inv = ((inv as f32) * (1. - 0.25)) as i16;
         for i in 0..3 {
             let delay = self.delay[i].abs() as usize;
             let gain = self.gain[i];

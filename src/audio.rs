@@ -128,9 +128,9 @@ pub fn spawn_audio(
 
     let mut adsr1 = env::Adsr::new();
     adsr1["attack_for"] = 2048;
-    adsr1["attack_to"] = i16::max_value();
+    adsr1["attack_to"] = i16::max_value() / 10;
     adsr1["decay_for"] = 1024;
-    adsr1["sustain_at"] = i16::max_value() / 4 * 3;
+    adsr1["sustain_at"] = i16::max_value() / 20;
     adsr1["release_for"] = 4096;
 
     tx2.send(Cmd::AdsrAttackFor(adsr1["attack_for"])).unwrap();
