@@ -1,90 +1,12 @@
 use std::io;
 use std::sync::mpsc;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
 use std::thread;
 use std::time::Duration;
 
 use termion::event::Key;
 use termion::input::TermRead;
 
-use rand::distributions::{Distribution, Uniform};
-use rand::rngs::ThreadRng;
 use tui::widgets::ListState;
-
-#[derive(Clone)]
-pub struct RandomSignal {
-    distribution: Uniform<u64>,
-    rng: ThreadRng,
-}
-
-impl RandomSignal {
-    pub fn new(lower: u64, upper: u64) -> RandomSignal {
-        RandomSignal {
-            distribution: Uniform::new(lower, upper),
-            rng: rand::thread_rng(),
-        }
-    }
-}
-
-impl Iterator for RandomSignal {
-    type Item = u64;
-    fn next(&mut self) -> Option<u64> {
-        Some(self.distribution.sample(&mut self.rng))
-    }
-}
-
-#[derive(Clone)]
-pub struct SinSignal {
-    x: f64,
-    interval: f64,
-    period: f64,
-    scale: f64,
-}
-
-impl SinSignal {
-    pub fn new(interval: f64, period: f64, scale: f64) -> SinSignal {
-        SinSignal {
-            x: 0.0,
-            interval,
-            period,
-            scale,
-        }
-    }
-}
-
-impl Iterator for SinSignal {
-    type Item = (f64, f64);
-    fn next(&mut self) -> Option<Self::Item> {
-        let point = (self.x, (self.x * 1.0 / self.period).sin() * self.scale);
-        self.x += self.interval;
-        Some(point)
-    }
-}
-
-pub struct TabsState<'a> {
-    pub titles: Vec<&'a str>,
-    pub index: usize,
-}
-
-impl<'a> TabsState<'a> {
-    pub fn new(titles: Vec<&'a str>) -> TabsState {
-        TabsState { titles, index: 0 }
-    }
-    pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.titles.len();
-    }
-
-    pub fn previous(&mut self) {
-        if self.index > 0 {
-            self.index -= 1;
-        } else {
-            self.index = self.titles.len() - 1;
-        }
-    }
-}
 
 pub struct StatefulList {
     pub state: ListState,
@@ -92,13 +14,6 @@ pub struct StatefulList {
 }
 
 impl StatefulList {
-    pub fn new() -> StatefulList {
-        StatefulList {
-            state: ListState::default(),
-            item_len: 0,
-        }
-    }
-
     pub fn with_items<T>(items: &Vec<T>) -> StatefulList {
         StatefulList {
             state: ListState::default(),
@@ -126,9 +41,9 @@ impl StatefulList {
         self.backward(1);
     }
 
-    pub fn unselect(&mut self) {
-        self.state.select(None);
-    }
+    //    pub fn unselect(&mut self) {
+    //        self.state.select(None);
+    //    }
 }
 
 pub enum Event<I> {
@@ -140,8 +55,11 @@ pub enum Event<I> {
 /// type is handled in its own thread and returned to a common `Receiver`
 pub struct Events {
     rx: mpsc::Receiver<Event<Key>>,
+
+    #[allow(dead_code)]
     input_handle: thread::JoinHandle<()>,
-    ignore_exit_key: Arc<AtomicBool>,
+
+    #[allow(dead_code)]
     tick_handle: thread::JoinHandle<()>,
 }
 
@@ -163,7 +81,6 @@ impl Default for Config {
 impl Events {
     pub fn with_config(config: Config) -> Events {
         let (tx, rx) = mpsc::channel();
-        let ignore_exit_key = Arc::new(AtomicBool::new(false));
         let input_handle = {
             let tx = tx.clone();
             thread::spawn(move || {
@@ -191,7 +108,6 @@ impl Events {
         };
         Events {
             rx,
-            ignore_exit_key,
             input_handle,
             tick_handle,
         }
@@ -199,13 +115,5 @@ impl Events {
 
     pub fn next(&self) -> Result<Event<Key>, mpsc::RecvError> {
         self.rx.recv()
-    }
-
-    pub fn disable_exit_key(&mut self) {
-        self.ignore_exit_key.store(true, Ordering::Relaxed);
-    }
-
-    pub fn enable_exit_key(&mut self) {
-        self.ignore_exit_key.store(false, Ordering::Relaxed);
     }
 }

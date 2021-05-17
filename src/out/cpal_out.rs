@@ -3,18 +3,12 @@ use anyhow;
 use cpal::traits::DeviceTrait;
 use cpal::traits::HostTrait;
 use cpal::traits::StreamTrait;
-use std::ops::{Index, IndexMut};
-use std::sync::mpsc::channel;
-use std::sync::mpsc::Sender;
-use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
 
-use crate::util::Component;
-
+#[allow(dead_code)]
 pub struct CpalOut {
     stream: Arc<dyn StreamTrait>,
     dummy: i16,
-    cv_in: i16,
 }
 
 impl CpalOut {
@@ -33,7 +27,6 @@ impl CpalOut {
         println!("Output device: {}", device.name()?);
         println!("Default output config: {:?}", config);
 
-        let mut last_s = 0;
         let write_data = move |output: &mut [f32], _cbi: &cpal::OutputCallbackInfo| {
             for frame in output.chunks_mut(channels) {
                 let samp = next_sample();
@@ -41,7 +34,6 @@ impl CpalOut {
                 for sample in frame.iter_mut() {
                     *sample = s;
                 }
-                last_s = samp;
             }
         };
 
@@ -54,7 +46,6 @@ impl CpalOut {
         Ok(CpalOut {
             stream: Arc::new(stream),
             dummy: 0,
-            cv_in: 0,
         })
     }
 }

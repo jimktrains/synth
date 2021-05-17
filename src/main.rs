@@ -95,11 +95,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let setbeat = Arc::clone(&beat);
 
     let measured_xtime = Arc::new(AtomicU64::new(0));
-    let set_measured_xtime = Arc::clone(&measured_xtime);
 
     let target_inc = (1_000_000_000. / (util::RATE as f64)) as u128; //22675; // (1/44100 * 10^9) ns //(((util::RATE as u64) / 100) as u64;
 
-    let _cpal_out = spawn_audio(rx, tx2, setbeat, set_measured_xtime, target_inc);
+    let _cpal_out = spawn_audio(rx, tx2, setbeat);
 
     ui_loop(
         tx,

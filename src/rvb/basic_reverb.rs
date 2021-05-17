@@ -11,7 +11,6 @@ pub struct BasicReverb {
     out_cv: i16,
     dummy: i16,
     counter: usize,
-    block_counter: usize,
 }
 
 impl BasicReverb {
@@ -24,7 +23,6 @@ impl BasicReverb {
             out_cv: 0i16,
             dummy: 0i16,
             counter: 0usize,
-            block_counter: 0usize,
         }
     }
 }

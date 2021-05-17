@@ -1,6 +1,5 @@
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::AtomicI16;
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
@@ -24,13 +23,10 @@ use crate::util::Component;
 
 use crate::arp;
 
-pub const AUDIO_BUFFER_LEN: u64 = 512;
-
 enum AvailableComponents {
     Adsr(env::Adsr),
     BasicArp(arp::BasicArp),
     BasicSeq(seq::BasicSeq),
-    FuncOsc(osc::FuncOsc),
     Mixer(mix::Mixer),
     Vca(amp::Vca),
     WaveTableOsc(osc::WaveTableOsc),
@@ -43,7 +39,6 @@ impl AvailableComponents {
             AvailableComponents::Adsr(x) => x.step(),
             AvailableComponents::BasicArp(x) => x.step(),
             AvailableComponents::BasicSeq(x) => x.step(),
-            AvailableComponents::FuncOsc(x) => x.step(),
             AvailableComponents::Mixer(x) => x.step(),
             AvailableComponents::Vca(x) => x.step(),
             AvailableComponents::WaveTableOsc(x) => x.step(),
@@ -55,7 +50,6 @@ impl AvailableComponents {
             AvailableComponents::Adsr(x) => x.tick(),
             AvailableComponents::BasicArp(x) => x.tick(),
             AvailableComponents::BasicSeq(x) => x.tick(),
-            AvailableComponents::FuncOsc(x) => x.tick(),
             AvailableComponents::Mixer(x) => x.tick(),
             AvailableComponents::Vca(x) => x.tick(),
             AvailableComponents::WaveTableOsc(x) => x.tick(),
@@ -71,7 +65,6 @@ impl Index<&str> for AvailableComponents {
             AvailableComponents::Adsr(x) => x.index(i),
             AvailableComponents::BasicArp(x) => x.index(i),
             AvailableComponents::BasicSeq(x) => x.index(i),
-            AvailableComponents::FuncOsc(x) => x.index(i),
             AvailableComponents::Mixer(x) => x.index(i),
             AvailableComponents::Vca(x) => x.index(i),
             AvailableComponents::WaveTableOsc(x) => x.index(i),
@@ -86,7 +79,6 @@ impl IndexMut<&str> for AvailableComponents {
             AvailableComponents::Adsr(x) => x.index_mut(i),
             AvailableComponents::BasicArp(x) => x.index_mut(i),
             AvailableComponents::BasicSeq(x) => x.index_mut(i),
-            AvailableComponents::FuncOsc(x) => x.index_mut(i),
             AvailableComponents::Mixer(x) => x.index_mut(i),
             AvailableComponents::Vca(x) => x.index_mut(i),
             AvailableComponents::WaveTableOsc(x) => x.index_mut(i),
@@ -99,8 +91,6 @@ pub fn spawn_audio(
     rx: Receiver<Cmd>,
     tx2: Sender<Cmd>,
     setbeat: Arc<AtomicI16>,
-    set_measured_xtime: Arc<AtomicU64>,
-    target_inc: u128,
 ) -> Option<out::CpalOut> {
     let mut cv_note_map = [0f64; 256];
     let mut ipc_64_map = [0u32; 256];
@@ -118,13 +108,13 @@ pub fn spawn_audio(
     let mut wto1 = osc::WaveTableOsc::sin(ipc_64_map, 69);
     wto1.modulation_idx = i16::max_value();
 
-    let mut wto1o = osc::WaveTableOsc::square(ipc_64_map, 69);
+    let wto1o = osc::WaveTableOsc::square(ipc_64_map, 69);
     wto1.modulation_idx = i16::max_value();
 
     let mut wto2 = osc::WaveTableOsc::sin(ipc_64_map, 0);
     wto2.modulation_idx = i16::max_value();
 
-    let mut vca1 = amp::Vca::new(i16::max_value());
+    let vca1 = amp::Vca::new(i16::max_value());
 
     let mut adsr1 = env::Adsr::new();
     adsr1["attack_for"] = 2048;
@@ -148,10 +138,10 @@ pub fn spawn_audio(
         tx2.send(Cmd::Beat(i as i16, *b)).unwrap()
     }
     let beats = Arc::new(RwLock::new(beats));
-    let mut beat_len = Arc::new(RwLock::new([128; 16]));
-    let mut seq1 = seq::BasicSeq::new(Arc::clone(&beats), Arc::clone(&beat_len));
+    let beat_len = Arc::new(RwLock::new([128; 16]));
+    let seq1 = seq::BasicSeq::new(Arc::clone(&beats), Arc::clone(&beat_len));
 
-    let mut vca1o = amp::Vca::new(i16::max_value());
+    let vca1o = amp::Vca::new(i16::max_value());
 
     let mut adsr1o = env::Adsr::new();
     adsr1o["attack_for"] = 2048;
@@ -160,7 +150,7 @@ pub fn spawn_audio(
     adsr1o["sustain_at"] = i16::max_value() / 2;
     adsr1o["release_for"] = 4096 * 4;
 
-    let mut obeats = [false; 16];
+    let obeats = [false; 16];
     //obeats[2] = true;
     //obeats[6] = true;
     //obeats[10] = true;
@@ -169,8 +159,8 @@ pub fn spawn_audio(
         tx2.send(Cmd::Obeat(i as i16, *b)).unwrap()
     }
     let obeats = Arc::new(RwLock::new(obeats));
-    let mut obeat_len = Arc::new(RwLock::new([64; 16]));
-    let mut seq1o = seq::BasicSeq::new(Arc::clone(&obeats), Arc::clone(&obeat_len));
+    let obeat_len = Arc::new(RwLock::new([64; 16]));
+    let seq1o = seq::BasicSeq::new(Arc::clone(&obeats), Arc::clone(&obeat_len));
 
     let mut mix1 = mix::Mixer::new();
     mix1["a_lvl"] = i16::max_value();
@@ -301,7 +291,6 @@ pub fn spawn_audio(
                         }
                     }
                 }
-                Cmd::Freq(f) => components[0].1["freq"] = f,
                 Cmd::Scale(n) => {
                     if let Some(j) = components.iter().position(|x| x.0 == "arp1") {
                         match &mut components.get_mut(j).unwrap().1 {

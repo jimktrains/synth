@@ -12,7 +12,6 @@ pub struct BasicSeq {
     trigger: i16,
     counter: u32,
     beat: i16,
-    half_beat: bool,
     dummy: i16,
 }
 
@@ -26,7 +25,6 @@ impl BasicSeq {
             trigger: 0,
             counter: 0,
             beat: 0,
-            half_beat: false,
             dummy: 0,
         }
     }

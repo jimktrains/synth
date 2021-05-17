@@ -1,5 +1,3 @@
-use crate::fixed::{SQ16_0, SQ1_31, SQ32_0};
-use cpal::StreamInstant;
 use std::ops::{Index, IndexMut};
 
 // Points per second.
@@ -12,15 +10,6 @@ pub const WAVE_TABLE_SAMPLES_PER_CYCLE_FACTOR: u32 = 256;
 
 // Wave Table Samples per point.
 pub const WAVE_TABLE_SAMPLES_PER_POINT: f64 = (RATE as f64) / (WAVE_TABLE_SAMPLES_PER_CYCLE as f64);
-
-pub fn quarter_point_per_32nd_node(tempo: f64) -> u32 {
-    let quarter_note_len = 60. / tempo;
-    let thirtysecond_note_len = quarter_note_len / 8.;
-    let pp32 = (RATE as f64) * thirtysecond_note_len;
-    let pp32_4 = (4 as f64 * pp32) as u32;
-
-    pp32_4
-}
 
 pub fn cv_to_64th_wavetable_increment(cv: i16) -> (f64, u32, f64) {
     let midi_note_index = cv as f64;

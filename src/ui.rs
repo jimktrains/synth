@@ -10,30 +10,21 @@ use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::sync::RwLock;
-use std::thread;
 
 use crate::tui_util::StatefulList;
 use argh::FromArgs;
 use std::{error::Error, io, time::Duration};
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use tui::{backend::TermionBackend, Terminal};
 use tui::{
-    backend::Backend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     symbols,
     text::{Span, Spans, Text},
-    widgets::canvas::{Canvas, Line, Map, MapResolution, Rectangle},
-    widgets::{
-        Axis, BarChart, Block, Borders, Chart, Dataset, Gauge, LineGauge, List, ListItem,
-        Paragraph, Row, Sparkline, Table, Tabs, Wrap,
-    },
-    Frame,
+    widgets::{Block, Borders, Gauge, List, ListItem, Paragraph, Sparkline},
 };
-use tui::{backend::TermionBackend, Terminal};
 
 use std::path::PathBuf;
-use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
@@ -54,7 +45,6 @@ impl<'a> From<&SingleCycleWaveFormItem> for Text<'a> {
 use crate::tui_util::{Config, Event, Events};
 
 pub enum Cmd {
-    Freq(i16),
     Beat(i16, bool),
     Obeat(i16, bool),
     FileWaveTable(SingleCycleWaveFormItem),
@@ -403,7 +393,6 @@ pub fn ui_loop(
         loop {
             match rx2.try_recv() {
                 Ok(c) => match c {
-                    Cmd::Freq(_) => (),
                     Cmd::Beat(i, b) => beats[i as usize] = 1 * if b { 1 } else { 0 },
                     Cmd::Obeat(i, b) => obeats[i as usize] = 1 * if b { 1 } else { 0 },
                     Cmd::FileWaveTable(_) => (),

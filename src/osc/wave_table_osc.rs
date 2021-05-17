@@ -3,7 +3,6 @@ use std::ops::{Index, IndexMut};
 extern crate rand;
 
 use std::fs::File;
-use std::path::Path;
 use std::path::PathBuf;
 use wav;
 use wav::bit_depth::BitDepth;
@@ -77,6 +76,7 @@ lazy_static! {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[allow(dead_code)]
 pub enum WaveTableChoice {
     Custom,
     Sin,
@@ -149,6 +149,8 @@ impl WaveTableOsc {
             WaveTableChoice::Sin,
         )
     }
+
+    #[allow(dead_code)]
     pub fn saw(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
         WaveTableOsc::new(
             [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
@@ -157,6 +159,8 @@ impl WaveTableOsc {
             WaveTableChoice::Saw,
         )
     }
+
+    #[allow(dead_code)]
     pub fn triangle(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
         WaveTableOsc::new(
             [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
@@ -174,6 +178,7 @@ impl WaveTableOsc {
         )
     }
 
+    #[allow(dead_code)]
     pub fn white_noise(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
         WaveTableOsc::new(
             [0; WAVE_TABLE_SAMPLES_PER_CYCLE as usize],
