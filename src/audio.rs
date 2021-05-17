@@ -306,7 +306,7 @@ pub fn spawn_audio(
                     if let Some(j) = components.iter().position(|x| x.0 == "wto1") {
                         match &mut components.get_mut(j).unwrap().1 {
                             AvailableComponents::WaveTableOsc(wt) => {
-                                wt.load_scwf(scwf.path);
+                                wt.which_table = osc::WaveTableOsc::load_scwf(scwf.path);
                             }
                             _ => (),
                         }

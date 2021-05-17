@@ -75,15 +75,15 @@ lazy_static! {
     };
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 #[allow(dead_code)]
 pub enum WaveTableChoice {
-    Custom,
     Sin,
     Saw,
     Triangle,
     Square,
     WhiteNoise,
+    Custom(Vec<i16>),
 }
 
 pub struct WaveTableOsc {
@@ -122,23 +122,32 @@ impl WaveTableOsc {
         }
     }
 
-    // Yes, I know, it's not great do this in the audio thread.
-    pub fn load_scwf(&mut self, filename: PathBuf) {
+    pub fn load_scwf(filename: PathBuf) -> WaveTableChoice {
         let mut inp_file = File::open(filename).unwrap();
         let (_header, data) = wav::read(&mut inp_file).unwrap();
 
+        let len = match &data {
+            BitDepth::Eight(fwt) => fwt.len(),
+            BitDepth::Sixteen(fwt) => fwt.len(),
+            BitDepth::TwentyFour(fwt) => fwt.len(),
+            BitDepth::ThirtyTwoFloat(fwt) => fwt.len(),
+            BitDepth::Empty => 0,
+        }
+        .min(WAVE_TABLE_SAMPLES_PER_CYCLE as usize);
+
+        let mut wt = vec![0; len];
         match data {
             BitDepth::Eight(_) => println!("8"),
             BitDepth::Sixteen(fwt) => {
-                for i in 1..fwt.len().min(WAVE_TABLE_SAMPLES_PER_CYCLE as usize) {
-                    self.wt[i as usize] = fwt[i as usize];
+                for i in 1..len {
+                    wt[i as usize] = fwt[i as usize];
                 }
             }
-            BitDepth::TwentyFour(_) => println!("25"),
+            BitDepth::TwentyFour(_) => println!("24"),
             BitDepth::ThirtyTwoFloat(_) => println!("32"),
             BitDepth::Empty => println!("0"),
         };
-        self.which_table = WaveTableChoice::Custom;
+        WaveTableChoice::Custom(wt)
     }
 
     pub fn sin(ipc_64_map: [u32; 256], init_freq: i16) -> WaveTableOsc {
@@ -231,8 +240,8 @@ impl Component for WaveTableOsc {
         // let i = i as usize;
 
         let i = self.wt_i as usize;
-        self.out_cv = match self.which_table {
-            WaveTableChoice::Custom => self.wt[i],
+        self.out_cv = match &self.which_table {
+            WaveTableChoice::Custom(wt) => wt[i],
             WaveTableChoice::Sin => SIN_TABLE[i],
             WaveTableChoice::Saw => SAW_TABLE[i],
             WaveTableChoice::Square => SQUARE_TABLE[i],
